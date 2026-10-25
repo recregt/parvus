@@ -30,7 +30,7 @@ type Authenticator struct {
 	key        *ecdsa.PrivateKey
 	Credential []byte
 	Counter    uint32
-	userHandle []byte
+	UserHandle []byte
 }
 
 func New(t testing.TB, rpID, origin string) *Authenticator {
@@ -121,7 +121,7 @@ func (a *Authenticator) challenge(options []byte) string {
 		if err != nil {
 			a.t.Fatal(err)
 		}
-		a.userHandle = handle
+		a.UserHandle = handle
 	}
 	return parsed.PublicKey.Challenge
 }
@@ -187,7 +187,7 @@ func (a *Authenticator) Assert(options []byte) []byte {
 		"clientDataJSON":    B64(clientData),
 		"authenticatorData": B64(authData),
 		"signature":         B64(signature),
-		"userHandle":        B64(a.userHandle),
+		"userHandle":        B64(a.UserHandle),
 	})
 }
 

@@ -211,6 +211,18 @@ func TestUnknownUserLooksLikeKnownUser(t *testing.T) {
 	}
 }
 
+func TestAPasskeyCannotSignInAsAnotherUser(t *testing.T) {
+	h := newHarness(t)
+	h.register(userAlice, slotOne)
+	mallory, _ := h.register("mallory", slotTwo)
+	mallory.UserHandle = []byte(userAlice)
+
+	session, err := h.login(mallory, slotThree, "")
+	if !errors.Is(err, engine.ErrAuth) {
+		t.Fatalf("mallory's passkey signed in as %q, err = %v", session.UserID, err)
+	}
+}
+
 func TestSignCounterThatDoesNotAdvanceIsRejected(t *testing.T) {
 	h := newHarness(t)
 	device, _ := h.register(userAlice, slotOne)
