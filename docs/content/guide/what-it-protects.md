@@ -17,6 +17,8 @@ A thief holding Alice's unlocked phone still cannot sign in. Parvus requires eve
 
 Some security keys count how often they have been used, and each signature carries that count. If a key's signature arrives with a count that did not move forward, someone may have copied it, and Parvus refuses the sign-in. Passkeys that sync between devices do not count and always report zero, which Parvus accepts.
 
+Treat this as a tripwire, not a wall. Two sign-ins with the same key that arrive at the same moment are both checked against the count stored before either of them, so both can pass. A copy used at exactly the same time as the original can slip through once, and the next sign-in that falls behind the count is refused.
+
 ## A captured request
 
 Every challenge is random, belongs to one slot and can be answered only once. A recorded answer replayed later finds its challenge already used. An answer that arrives after its time limit finds the challenge expired.
