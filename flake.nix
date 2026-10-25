@@ -29,6 +29,7 @@
             ./internal
             ./cmd
             ./examples
+            ./e2e
           ];
         };
 
@@ -47,15 +48,15 @@
           }
           // attrs
         );
-    in
-    {
-      packages = forEach (pkgs: {
-        default = pkgs.buildGoModule {
-          pname = "parvus";
+
+      goProgram =
+        pkgs: name: path:
+        pkgs.buildGoModule {
+          pname = name;
           version = "0";
           src = sourceOf pkgs;
           inherit vendorHash;
-          subPackages = [ "cmd/parvus" ];
+          subPackages = [ path ];
           env.CGO_ENABLED = "0";
           ldflags = [
             "-s"
@@ -63,10 +64,14 @@
           ];
           doCheck = false;
           meta = {
-            mainProgram = "parvus";
+            mainProgram = name;
             license = pkgs.lib.licenses.mpl20;
           };
         };
+    in
+    {
+      packages = forEach (pkgs: {
+        default = goProgram pkgs "parvus" "cmd/parvus";
       });
 
       checks = forEach (pkgs: {
@@ -95,6 +100,25 @@
             -ignore '.git/**' .
           touch $out
         '';
+      }
+      // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+        browser =
+          pkgs.runCommand "parvus-browser"
+            {
+              nativeBuildInputs = [
+                (goProgram pkgs "parvus" "cmd/parvus")
+                (goProgram pkgs "relay-go" "examples/relay-go")
+                pkgs.nodejs
+                pkgs.chromium
+                pkgs.curl
+              ];
+              FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; };
+            }
+            ''
+              export HOME=$TMPDIR
+              bash ${sourceOf pkgs}/e2e/run.sh
+              touch $out
+            '';
       });
 
       devShells = forEach (pkgs: {

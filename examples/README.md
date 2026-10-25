@@ -55,3 +55,5 @@ PARVUS_URL=http://127.0.0.1:9000 PARVUS_SECRET=host-secret LISTEN=127.0.0.1:8080
 Open <http://localhost:8080>, register a username, then sign in.
 
 The origin the browser shows, `http://localhost:8080`, must match `PARVUS_ORIGINS`, and the relying party id must match the host name, here `localhost`.
+
+`nix flake check` runs this page in headless Chromium with a virtual authenticator, against both relays (`e2e/`).
