@@ -33,7 +33,7 @@
           ];
         };
 
-      vendorHash = "sha256-m6w28qCHfZl8v8F4/QIfCMCwJeEGQK9Ld5CwQOVDD1M=";
+      vendorHash = "sha256-uiTJVRnKnnlmhUe4cN0eygLpIBJ3Cb5Kam6/KLMvU2k=";
 
       goCheck =
         pkgs: attrs:
@@ -82,6 +82,23 @@
             "-race"
             "-count=1"
           ];
+        };
+
+        postgres = goCheck pkgs {
+          doCheck = true;
+          env.CGO_ENABLED = "1";
+          nativeCheckInputs = [ pkgs.postgresql ];
+          checkPhase = ''
+            runHook preCheck
+            export PGDATA=$TMPDIR/postgres
+            initdb --auth=trust --username=parvus >/dev/null
+            pg_ctl --wait --log=$TMPDIR/postgres.log \
+              --options="-c listen_addresses= -c unix_socket_directories=$TMPDIR" start
+            PARVUS_TEST_POSTGRES="host=$TMPDIR user=parvus" \
+              go test -tags postgres -race -count=1 ./internal/store/postgres
+            pg_ctl --wait stop
+            runHook postCheck
+          '';
         };
 
         lint = goCheck pkgs {

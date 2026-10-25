@@ -19,6 +19,8 @@ import (
 	"github.com/recregt/parvus/internal/api"
 	"github.com/recregt/parvus/internal/config"
 	"github.com/recregt/parvus/internal/engine"
+	"github.com/recregt/parvus/internal/store"
+	"github.com/recregt/parvus/internal/store/postgres"
 	"github.com/recregt/parvus/internal/store/sqlite"
 )
 
@@ -43,7 +45,7 @@ func run() error {
 	defer stop()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	db, err := sqlite.Open(ctx, cfg.DB)
+	db, err := openStore(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -81,6 +83,18 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+type closableStore interface {
+	store.Store
+	Close() error
+}
+
+func openStore(ctx context.Context, location string) (closableStore, error) {
+	if strings.HasPrefix(location, "postgres://") || strings.HasPrefix(location, "postgresql://") {
+		return postgres.Open(ctx, location)
+	}
+	return sqlite.Open(ctx, location)
 }
 
 func listenUnix(path string) (net.Listener, error) {

@@ -6,6 +6,8 @@ version: "2"
 
 run:
   tests: true
+  build-tags:
+    - postgres
 
 linters:
   default: none
@@ -31,6 +33,7 @@ linters:
             - $gostd
             - github.com/recregt/parvus
             - github.com/go-webauthn/webauthn
+            - github.com/jackc/pgx/v5
             - modernc.org/sqlite
     nolintlint:
       require-explanation: true
