@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"net"
 	"os"
 	"path/filepath"
@@ -30,6 +31,32 @@ func TestRestartAfterACrashReplacesAStaleSocketButNeverALiveOne(t *testing.T) {
 
 	if _, err := listenUnix(path); err == nil {
 		t.Fatal("a socket served by a live process was taken over")
+	}
+}
+
+func TestTheDatabaseIsPrivateToParvus(t *testing.T) {
+	restrictNewFiles()
+	dir := t.TempDir()
+	db, err := openStore(context.Background(), filepath.Join(dir, "parvus.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if err := db.PutChallenge(context.Background(), "slot", []byte("x"), 1, 0); err != nil {
+		t.Fatal(err)
+	}
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		info, err := file.Info()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := info.Mode().Perm(); mode&0o077 != 0 {
+			t.Fatalf("%s is mode %o, readable beyond its owner", file.Name(), mode)
+		}
 	}
 }
 

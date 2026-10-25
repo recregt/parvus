@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	unixPrefix = "unix:"
-	socketMode = 0o660
+	unixPrefix   = "unix:"
+	socketMode   = 0o660
+	privateFiles = 0o077
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 }
 
 func run() error {
+	restrictNewFiles()
 	cfg, err := config.FromEnvironment()
 	if err != nil {
 		return err
@@ -83,6 +85,10 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+func restrictNewFiles() {
+	syscall.Umask(privateFiles)
 }
 
 type closableStore interface {
