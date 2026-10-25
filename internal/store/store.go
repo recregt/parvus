@@ -50,8 +50,9 @@ type Store struct {
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	dsn := url.URL{
-		Scheme: "file",
-		Path:   path,
+		Scheme:   "file",
+		OmitHost: true,
+		Path:     path,
 		RawQuery: url.Values{"_pragma": {
 			"foreign_keys(1)",
 			"journal_mode(WAL)",

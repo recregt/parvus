@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -47,6 +48,22 @@ func TestReopenKeepsData(t *testing.T) {
 	user, err := second.User(ctx, userID)
 	if err != nil || user.CredCount != 1 {
 		t.Fatalf("user = %+v, %v", user, err)
+	}
+}
+
+func TestDatabasePathIsUsedAsGiven(t *testing.T) {
+	t.Chdir(t.TempDir())
+	for _, path := range []string{"relative.db", "with space?and=query.db"} {
+		db, err := store.Open(context.Background(), path)
+		if err != nil {
+			t.Fatalf("%q: %v", path, err)
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("%q was not created: %v", path, err)
+		}
 	}
 }
 
