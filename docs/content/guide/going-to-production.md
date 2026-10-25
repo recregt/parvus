@@ -25,7 +25,13 @@ Environment variables leak more easily than they seem: into process listings, cr
 
 ## A service that restarts cleanly
 
-On a systemd machine, credentials are the cleanest home for those files. This unit runs Parvus as a throwaway system user, gives it a private directory for its database, and hands it the two secrets without ever putting them in the environment.
+On a systemd machine, credentials are the cleanest home for those files. Give Parvus a system user of its own first.
+
+```sh
+sudo useradd --system --no-create-home parvus
+```
+
+This unit runs Parvus as that user, gives it a private directory for its database and another for its socket, and hands it the two secrets without ever putting them in the environment.
 
 ```ini
 [Unit]
@@ -34,8 +40,11 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/parvus
-DynamicUser=yes
+User=parvus
+Group=parvus
 StateDirectory=parvus
+RuntimeDirectory=parvus
+RuntimeDirectoryMode=0750
 LoadCredential=secret:/etc/parvus/secret
 LoadCredential=pepper:/etc/parvus/pepper
 Environment=PARVUS_SECRET_FILE=%d/secret
@@ -44,12 +53,18 @@ Environment=PARVUS_RP_ID=notes.example.com
 Environment=PARVUS_RP_NAME=Notes
 Environment=PARVUS_ORIGINS=https://notes.example.com
 Environment=PARVUS_DB=%S/parvus/parvus.db
-Environment=PARVUS_LISTEN=127.0.0.1:9000
+Environment=PARVUS_LISTEN=unix:%t/parvus/parvus.sock
 Environment=PARVUS_MAX_CREDENTIALS=20
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Your backend reaches the socket by joining the `parvus` group. In your backend's own unit, that is one line.
+
+```ini
+SupplementaryGroups=parvus
 ```
 
 `PARVUS_RP_ID` is your site's domain, and `PARVUS_ORIGINS` lists every origin your users' browsers will show, separated by commas. Passkeys made for one domain never work on another, so choose the domain before anyone registers.
@@ -60,7 +75,9 @@ When systemd asks Parvus to stop, it finishes the requests it is already serving
 
 Parvus speaks plain HTTP and expects to be reachable only by your backend. `PARVUS_LISTEN` takes either a TCP address or a unix socket.
 
-A loopback address such as `127.0.0.1:9000` works when your backend runs on the same machine. A unix socket, written as `unix:/run/parvus/parvus.sock`, keeps Parvus off the network entirely. Parvus creates the socket so that only its own user can connect, which means your backend must run as that same user. If a socket is left behind by a crash, the next start removes it, and it refuses to take over a socket another running copy still answers on.
+A unix socket, written as `unix:/run/parvus/parvus.sock`, keeps Parvus off the network entirely, which is why the unit above uses one. Parvus creates the socket so that its own user and its group can connect and nobody else can, so your backend needs either the same user or membership of that group. If a socket is left behind by a crash, the next start removes it, and it refuses to take over a socket another running copy still answers on.
+
+A loopback address such as `127.0.0.1:9000` works too, whenever your backend runs on the same machine. Any process on the machine can then reach Parvus, and only the secret keeps them out.
 
 Any other address works too, for example when Parvus and your backend share a private container network. Parvus logs a warning when it listens beyond loopback, because the shared secret then crosses a network in plain text. Do it only on a network that nothing else can reach.
 

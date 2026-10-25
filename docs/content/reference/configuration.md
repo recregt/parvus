@@ -13,7 +13,7 @@ Parvus reads eight environment variables. All of them are required, none of them
 | `PARVUS_RP_NAME` | Your site's name, shown by devices when they create a passkey. |
 | `PARVUS_ORIGINS` | The origins your users' browsers show, separated by commas, for example `https://notes.example.com`. |
 | `PARVUS_DB` | A SQLite file path, or a `postgres://` or `postgresql://` address. |
-| `PARVUS_LISTEN` | `host:port` for TCP, or `unix:/path` for a unix socket that only Parvus's own user can open. |
+| `PARVUS_LISTEN` | `host:port` for TCP, or `unix:/path` for a unix socket that Parvus's own user and group can open. |
 | `PARVUS_MAX_CREDENTIALS` | The most passkeys one account may hold, a whole number of at least one. |
 
 ## Reading a setting from a file

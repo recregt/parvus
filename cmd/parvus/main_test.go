@@ -6,6 +6,7 @@ package main
 
 import (
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -29,5 +30,21 @@ func TestRestartAfterACrashReplacesAStaleSocketButNeverALiveOne(t *testing.T) {
 
 	if _, err := listenUnix(path); err == nil {
 		t.Fatal("a socket served by a live process was taken over")
+	}
+}
+
+func TestSocketAdmitsItsGroupAndNobodyElse(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "parvus.sock")
+	listener, err := listenUnix(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = listener.Close() }()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o660 {
+		t.Fatalf("socket mode is %o, want 660", mode)
 	}
 }

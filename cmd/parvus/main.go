@@ -26,7 +26,7 @@ import (
 
 const (
 	unixPrefix = "unix:"
-	socketMode = 0o600
+	socketMode = 0o660
 )
 
 func main() {
