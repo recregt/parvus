@@ -52,6 +52,7 @@ func New(e *engine.Engine, hostSecret []byte, log *slog.Logger) http.Handler {
 	a.handle("POST /v1/users/{id}/logout", a.logoutAll)
 	a.handle("POST /v1/users/{id}/credentials/begin", a.credentialBegin)
 	a.handle("POST /v1/users/{id}/credentials/finish", a.credentialFinish)
+	a.handle("GET /v1/users/{id}/credentials", a.credentialList)
 	a.handle("DELETE /v1/users/{id}/credentials/{cid}", a.credentialDelete)
 	a.handle("POST /v1/users/{id}/codes", a.rotateCode)
 	a.handle("POST /v1/users/{id}/reset", a.reset)
@@ -374,6 +375,22 @@ func (a *API) credentialFinish(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+func (a *API) credentialList(w http.ResponseWriter, r *http.Request) error {
+	ids, err := a.engine.CredentialIDs(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	type credential struct {
+		ID string `json:"id"`
+	}
+	listed := make([]credential, 0, len(ids))
+	for _, id := range ids {
+		listed = append(listed, credential{ID: base64.RawURLEncoding.EncodeToString(id)})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"credentials": listed})
 	return nil
 }
 

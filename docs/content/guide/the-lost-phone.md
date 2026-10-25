@@ -42,7 +42,7 @@ If the code is wrong, or the user does not exist, the answer is the same `authen
 Alice is in, but still has no working passkey, and the old one is out there on a phone that someone may find. Your recovery page can lead through three steps:
 
 1. **Add a new passkey** on the device in hand, as in chapter five.
-2. **Remove the lost one**, using the id your backend noted when it was created.
+2. **Remove the lost one.** The list of the account's passkeys shows which one it is, by the name your backend stored next to its id.
 3. **Sign out everywhere**, with `/v1/users/{id}/logout`, and sign back in with the new passkey. This ends every session, including any that were open on the lost phone.
 
 At any calm moment, Alice can also ask for a fresh code without using the old one. Your backend calls `/v1/users/{id}/codes`, and the previous code stops working at once.

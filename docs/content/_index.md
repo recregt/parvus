@@ -49,6 +49,6 @@ layout: hextra-home
   >}}
   {{< hextra/feature-card
     title="Small on purpose"
-    subtitle="Fourteen endpoints, frozen as version one. Parvus does sign-in and recovery, and leaves everything else to the app it serves."
+    subtitle="Fifteen endpoints, frozen as version one. Parvus does sign-in and recovery, and leaves everything else to the app it serves."
   >}}
 {{< /hextra/feature-grid >}}

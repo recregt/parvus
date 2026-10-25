@@ -37,11 +37,26 @@ Each account can hold up to `PARVUS_MAX_CREDENTIALS` passkeys. That number is yo
 
 ## Keeping track of passkeys
 
-Parvus stores passkeys but does not name them. If you want to show Alice a list such as "phone" and "laptop", note each passkey's id when it is created. The credential your backend forwards at the end of the ceremony carries it in its `id` field. Store that id with a name Alice chooses, and keep forwarding the credential itself unchanged.
+Parvus can tell you which passkeys an account holds, in the order they were added.
+
+```
+GET /v1/users/{id}/credentials
+```
+
+```json
+{
+  "credentials": [
+    { "id": "dYIbzlbaPgw0VLPabYKvMWVV0YsoJzBSfWWZUa6r-8Y" },
+    { "id": "3Fh0oQZ5cS1T2bWm8lJxK7yN4aPq9eRv6uDgHiCkLsM" }
+  ]
+}
+```
+
+Parvus does not name them, though. To show Alice "phone" and "laptop" instead of two strings of letters, store a name next to each id when the passkey is created. The credential your backend forwards at the end of the ceremony carries the same id in its `id` field, so your backend can read it there and keep forwarding the credential unchanged.
 
 ## Removing a passkey
 
-Removing one takes a single call with that id.
+Removing one takes a single call with its id.
 
 ```
 DELETE /v1/users/{id}/credentials/{credential-id}

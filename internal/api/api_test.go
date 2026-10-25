@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -187,10 +188,14 @@ func TestWireContractOfEveryEndpoint(t *testing.T) {
 	options = h.options(http.MethodPost, "/v1/users/"+userAlice+"/credentials/begin", map[string]any{"ttl_seconds": ceremony})
 	h.expect(http.StatusNoContent, http.MethodPost, "/v1/users/"+userAlice+"/credentials/finish",
 		map[string]any{"credential": json.RawMessage(second.Register(options))}, nil)
+	h.expectPasskeys(userAlice, softauth.B64(device.Credential), softauth.B64(second.Credential))
+
 	h.expect(http.StatusNoContent, http.MethodDelete,
 		"/v1/users/"+userAlice+"/credentials/"+softauth.B64(device.Credential), nil, nil)
 	h.expect(http.StatusConflict, http.MethodDelete,
 		"/v1/users/"+userAlice+"/credentials/"+softauth.B64(second.Credential), nil, nil)
+	h.expectPasskeys(userAlice, softauth.B64(second.Credential))
+	h.expect(http.StatusNotFound, http.MethodGet, "/v1/users/nobody/credentials", nil, nil)
 
 	var rotated struct {
 		RecoveryCode string `json:"recovery_code"`
@@ -219,6 +224,23 @@ func TestWireContractOfEveryEndpoint(t *testing.T) {
 
 	h.expect(http.StatusNoContent, http.MethodDelete, "/v1/users/"+userAlice, nil, nil)
 	h.expect(http.StatusNotFound, http.MethodDelete, "/v1/users/"+userAlice, nil, nil)
+}
+
+func (h *harness) expectPasskeys(user string, want ...string) {
+	h.t.Helper()
+	var listed struct {
+		Credentials []struct {
+			ID string `json:"id"`
+		} `json:"credentials"`
+	}
+	h.expect(http.StatusOK, http.MethodGet, "/v1/users/"+user+"/credentials", nil, &listed)
+	var got []string
+	for _, credential := range listed.Credentials {
+		got = append(got, credential.ID)
+	}
+	if !slices.Equal(got, want) {
+		h.t.Fatalf("passkeys of %s are %q, want %q", user, got, want)
+	}
 }
 
 func laterThan(a, b string) bool {

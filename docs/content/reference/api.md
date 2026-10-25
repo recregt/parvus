@@ -119,6 +119,10 @@ Starts adding a passkey to an account that already has one. Returns `200` with t
 
 Returns `204`. Fails with `authentication_failed` if the ceremony is unknown, expired or does not verify, with `credential_limit` if the account already holds `PARVUS_MAX_CREDENTIALS` passkeys, with `already_exists` if the passkey is already registered, and with `not_found` if the account was reset or deleted during the ceremony.
 
+### `GET /v1/users/{id}/credentials`
+
+Returns `200` with `{"credentials": [{"id"}]}`, the account's passkeys in the order they were added. The list is empty for an account waiting to be re-enrolled after a reset. Fails with `not_found` if the account does not exist.
+
 ### `DELETE /v1/users/{id}/credentials/{credential-id}`
 
 Returns `204`. Fails with `not_found` if the account has no such passkey, and with `last_credential` if it is the account's only one.

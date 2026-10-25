@@ -330,6 +330,21 @@ func (e *Engine) FinishAddCredential(ctx context.Context, userID string, body []
 	return e.store.AddCredential(ctx, *credential, e.maxCredentials, e.unix())
 }
 
+func (e *Engine) CredentialIDs(ctx context.Context, userID string) ([][]byte, error) {
+	if _, err := e.store.User(ctx, userID, e.unix()); err != nil {
+		return nil, err
+	}
+	stored, err := e.store.Credentials(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([][]byte, 0, len(stored))
+	for _, credential := range stored {
+		ids = append(ids, credential.ID)
+	}
+	return ids, nil
+}
+
 func (e *Engine) RemoveCredential(ctx context.Context, userID string, credentialID []byte) error {
 	return e.store.RemoveCredential(ctx, userID, credentialID, e.unix())
 }
