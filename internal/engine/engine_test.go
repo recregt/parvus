@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -129,6 +130,33 @@ func TestRegisterThenLoginWithoutUsername(t *testing.T) {
 	info, err := h.engine.Introspect(h.ctx, session.Token)
 	if err != nil || info.UserID != userAlice {
 		t.Fatalf("introspect = %+v, %v", info, err)
+	}
+}
+
+func TestRegistrationOffersOnlyTheAllowedAlgorithms(t *testing.T) {
+	h := newHarness(t)
+	options, err := h.engine.BeginRegistration(h.ctx, engine.RegistrationInput{
+		Slot: slotOne, UserID: userAlice, TTL: ceremonyTTL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parsed struct {
+		PublicKey struct {
+			Params []struct {
+				Alg int `json:"alg"`
+			} `json:"pubKeyCredParams"`
+		} `json:"publicKey"`
+	}
+	if err := json.Unmarshal(options, &parsed); err != nil {
+		t.Fatal(err)
+	}
+	var offered []int
+	for _, param := range parsed.PublicKey.Params {
+		offered = append(offered, param.Alg)
+	}
+	if want := []int{-7, -8, -257}; !slices.Equal(offered, want) {
+		t.Fatalf("offered algorithms %v, want %v", offered, want)
 	}
 }
 

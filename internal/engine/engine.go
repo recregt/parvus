@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	"github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/recregt/parvus/internal/secret"
@@ -184,6 +185,19 @@ func (e *Engine) newCode(userID string) (code string, mac []byte, err error) {
 	return code, secret.MAC(e.pepper, userID, normalized), nil
 }
 
+func allowedAlgorithms() []protocol.CredentialParameter {
+	algorithms := []webauthncose.COSEAlgorithmIdentifier{
+		webauthncose.AlgES256,
+		webauthncose.AlgEdDSA,
+		webauthncose.AlgRS256,
+	}
+	out := make([]protocol.CredentialParameter, 0, len(algorithms))
+	for _, algorithm := range algorithms {
+		out = append(out, protocol.CredentialParameter{Type: protocol.PublicKeyCredentialType, Algorithm: algorithm})
+	}
+	return out
+}
+
 func exclusions(credentials []webauthn.Credential) []protocol.CredentialDescriptor {
 	out := make([]protocol.CredentialDescriptor, 0, len(credentials))
 	for _, credential := range credentials {
@@ -225,7 +239,9 @@ func (e *Engine) BeginRegistration(ctx context.Context, in RegistrationInput) ([
 }
 
 func (e *Engine) begin(ctx context.Context, slot string, env envelope, acct account, ttl time.Duration) ([]byte, error) {
-	creation, session, err := e.wa.BeginRegistration(acct, webauthn.WithExclusions(exclusions(acct.credentials)))
+	creation, session, err := e.wa.BeginRegistration(acct,
+		webauthn.WithExclusions(exclusions(acct.credentials)),
+		webauthn.WithCredentialParameters(allowedAlgorithms()))
 	if err != nil {
 		return nil, err
 	}
