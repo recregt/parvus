@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/recregt/parvus/internal/engine"
+	"github.com/recregt/parvus/internal/softauth"
 	"github.com/recregt/parvus/internal/store"
 )
 
@@ -80,39 +81,39 @@ func newHarness(t *testing.T) *harness {
 	return &harness{t: t, ctx: ctx, engine: eng, clock: clk}
 }
 
-func (h *harness) register(userID, slot string) (*authenticator, string) {
+func (h *harness) register(userID, slot string) (*softauth.Authenticator, string) {
 	h.t.Helper()
-	device := newAuthenticator(h.t, rpID, origin)
+	device := softauth.New(h.t, rpID, origin)
 	options, err := h.engine.BeginRegistration(h.ctx, engine.RegistrationInput{
 		Slot: slot, UserID: userID, TTL: ceremonyTTL,
 	})
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	result, err := h.engine.FinishRegistration(h.ctx, slot, device.register(options))
+	result, err := h.engine.FinishRegistration(h.ctx, slot, device.Register(options))
 	if err != nil {
 		h.t.Fatal(err)
 	}
 	return device, result.RecoveryCode
 }
 
-func (h *harness) login(device *authenticator, slot, userID string) (engine.Session, error) {
+func (h *harness) login(device *softauth.Authenticator, slot, userID string) (engine.Session, error) {
 	h.t.Helper()
 	options, err := h.engine.BeginLogin(h.ctx, slot, userID, ceremonyTTL)
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	return h.engine.FinishLogin(h.ctx, slot, device.assert(options), sessionTTL)
+	return h.engine.FinishLogin(h.ctx, slot, device.Assert(options), sessionTTL)
 }
 
-func (h *harness) addDevice(userID string) (*authenticator, error) {
+func (h *harness) addDevice(userID string) (*softauth.Authenticator, error) {
 	h.t.Helper()
-	device := newAuthenticator(h.t, rpID, origin)
+	device := softauth.New(h.t, rpID, origin)
 	options, err := h.engine.BeginAddCredential(h.ctx, userID, ceremonyTTL)
 	if err != nil {
 		return nil, err
 	}
-	return device, h.engine.FinishAddCredential(h.ctx, userID, device.register(options))
+	return device, h.engine.FinishAddCredential(h.ctx, userID, device.Register(options))
 }
 
 func TestRegisterThenLoginWithoutUsername(t *testing.T) {
@@ -150,7 +151,7 @@ func TestLoginWithUserIDListsCredentials(t *testing.T) {
 	if err := json.Unmarshal(options, &parsed); err != nil {
 		t.Fatal(err)
 	}
-	if len(parsed.PublicKey.Allow) != 1 || parsed.PublicKey.Allow[0].ID != b64(device.credential) {
+	if len(parsed.PublicKey.Allow) != 1 || parsed.PublicKey.Allow[0].ID != softauth.B64(device.Credential) {
 		t.Fatalf("allowCredentials = %+v", parsed.PublicKey.Allow)
 	}
 	if len(parsed.PublicKey.Allow[0].Transports) != 0 {
@@ -159,7 +160,7 @@ func TestLoginWithUserIDListsCredentials(t *testing.T) {
 	if parsed.PublicKey.Timeout != int(ceremonyTTL.Milliseconds()) {
 		t.Fatalf("timeout = %d", parsed.PublicKey.Timeout)
 	}
-	if _, err := h.engine.FinishLogin(h.ctx, slotTwo, device.assert(options), sessionTTL); err != nil {
+	if _, err := h.engine.FinishLogin(h.ctx, slotTwo, device.Assert(options), sessionTTL); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -181,8 +182,8 @@ func TestUnknownUserLooksLikeKnownUser(t *testing.T) {
 	if len(parsed.PublicKey.Allow) != 1 {
 		t.Fatalf("allowCredentials = %+v", parsed.PublicKey.Allow)
 	}
-	stranger := newAuthenticator(t, rpID, origin)
-	_, err = h.engine.FinishLogin(h.ctx, slotOne, stranger.assert(options), sessionTTL)
+	stranger := softauth.New(t, rpID, origin)
+	_, err = h.engine.FinishLogin(h.ctx, slotOne, stranger.Assert(options), sessionTTL)
 	if !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("err = %v", err)
 	}
@@ -194,7 +195,7 @@ func TestSignCounterThatDoesNotAdvanceIsRejected(t *testing.T) {
 	if _, err := h.login(device, slotTwo, ""); err != nil {
 		t.Fatal(err)
 	}
-	device.counter = 0
+	device.Counter = 0
 	if _, err := h.login(device, slotThree, ""); !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("err = %v", err)
 	}
@@ -207,7 +208,7 @@ func TestChallengeIsSingleUseAndExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	body := device.assert(options)
+	body := device.Assert(options)
 	if _, err := h.engine.FinishLogin(h.ctx, slotTwo, body, sessionTTL); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +220,7 @@ func TestChallengeIsSingleUseAndExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.clock.Advance(ceremonyTTL)
-	if _, err := h.engine.FinishLogin(h.ctx, slotThree, device.assert(options), sessionTTL); !errors.Is(err, engine.ErrAuth) {
+	if _, err := h.engine.FinishLogin(h.ctx, slotThree, device.Assert(options), sessionTTL); !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("expired err = %v", err)
 	}
 }
@@ -234,7 +235,7 @@ func TestBeginReplacesPendingChallengeInSameSlot(t *testing.T) {
 	if _, err := h.engine.BeginLogin(h.ctx, slotTwo, "", ceremonyTTL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.engine.FinishLogin(h.ctx, slotTwo, device.assert(first), sessionTTL); !errors.Is(err, engine.ErrAuth) {
+	if _, err := h.engine.FinishLogin(h.ctx, slotTwo, device.Assert(first), sessionTTL); !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -333,8 +334,8 @@ func TestResetThenEnrollWithToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fresh := newAuthenticator(t, rpID, origin)
-	result, err := h.engine.FinishRegistration(h.ctx, enrollmentSlot, fresh.register(options))
+	fresh := softauth.New(t, rpID, origin)
+	result, err := h.engine.FinishRegistration(h.ctx, enrollmentSlot, fresh.Register(options))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,13 +376,13 @@ func TestAddAndRemoveCredentials(t *testing.T) {
 	if _, err := h.login(second, slotTwo, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.engine.RemoveCredential(h.ctx, userAlice, first.credential); err != nil {
+	if err := h.engine.RemoveCredential(h.ctx, userAlice, first.Credential); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.engine.RemoveCredential(h.ctx, userAlice, second.credential); !errors.Is(err, store.ErrLastCredential) {
+	if err := h.engine.RemoveCredential(h.ctx, userAlice, second.Credential); !errors.Is(err, store.ErrLastCredential) {
 		t.Fatalf("err = %v", err)
 	}
-	if err := h.engine.RemoveCredential(h.ctx, userAlice, first.credential); !errors.Is(err, store.ErrNotFound) {
+	if err := h.engine.RemoveCredential(h.ctx, userAlice, first.Credential); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("err = %v", err)
 	}
 }

@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-package engine_test
+package softauth
 
 import (
 	"crypto/ecdsa"
@@ -23,17 +23,17 @@ const (
 	credentialBytes  = 32
 )
 
-type authenticator struct {
-	t          *testing.T
+type Authenticator struct {
+	t          testing.TB
 	rpID       string
 	origin     string
 	key        *ecdsa.PrivateKey
-	credential []byte
-	counter    uint32
+	Credential []byte
+	Counter    uint32
 	userHandle []byte
 }
 
-func newAuthenticator(t *testing.T, rpID, origin string) *authenticator {
+func New(t testing.TB, rpID, origin string) *Authenticator {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -43,10 +43,10 @@ func newAuthenticator(t *testing.T, rpID, origin string) *authenticator {
 	if _, err := rand.Read(credential); err != nil {
 		t.Fatal(err)
 	}
-	return &authenticator{t: t, rpID: rpID, origin: origin, key: key, credential: credential}
+	return &Authenticator{t: t, rpID: rpID, origin: origin, key: key, Credential: credential}
 }
 
-func b64(data []byte) string {
+func B64(data []byte) string {
 	return base64.RawURLEncoding.EncodeToString(data)
 }
 
@@ -86,7 +86,7 @@ func concat(parts ...[]byte) []byte {
 	return out
 }
 
-func (a *authenticator) coseKey() []byte {
+func (a *Authenticator) coseKey() []byte {
 	point, err := a.key.PublicKey.Bytes()
 	if err != nil {
 		a.t.Fatal(err)
@@ -103,7 +103,7 @@ func (a *authenticator) coseKey() []byte {
 	)
 }
 
-func (a *authenticator) challenge(options []byte) string {
+func (a *Authenticator) challenge(options []byte) string {
 	a.t.Helper()
 	var parsed struct {
 		PublicKey struct {
@@ -126,7 +126,7 @@ func (a *authenticator) challenge(options []byte) string {
 	return parsed.PublicKey.Challenge
 }
 
-func (a *authenticator) clientData(kind, challenge string) []byte {
+func (a *Authenticator) clientData(kind, challenge string) []byte {
 	out, err := json.Marshal(map[string]any{
 		"type":      kind,
 		"challenge": challenge,
@@ -138,24 +138,24 @@ func (a *authenticator) clientData(kind, challenge string) []byte {
 	return out
 }
 
-func (a *authenticator) rpIDHash() []byte {
+func (a *Authenticator) rpIDHash() []byte {
 	sum := sha256.Sum256([]byte(a.rpID))
 	return sum[:]
 }
 
-func (a *authenticator) register(options []byte) []byte {
+func (a *Authenticator) Register(options []byte) []byte {
 	a.t.Helper()
 	clientData := a.clientData("webauthn.create", a.challenge(options))
 	length := make([]byte, 2)
-	binary.BigEndian.PutUint16(length, uint16(len(a.credential)))
+	binary.BigEndian.PutUint16(length, uint16(len(a.Credential)))
 	counter := make([]byte, 4)
-	binary.BigEndian.PutUint32(counter, a.counter)
+	binary.BigEndian.PutUint32(counter, a.Counter)
 	authData := concat(
 		a.rpIDHash(),
 		[]byte{flagUserPresent | flagUserVerified | flagAttested},
 		counter,
 		make([]byte, 16),
-		length, a.credential, a.coseKey(),
+		length, a.Credential, a.coseKey(),
 	)
 	attestation := concat(
 		cborHead(5, 3),
@@ -164,18 +164,18 @@ func (a *authenticator) register(options []byte) []byte {
 		cborText("authData"), cborBytes(authData),
 	)
 	return a.response(map[string]any{
-		"clientDataJSON":    b64(clientData),
-		"attestationObject": b64(attestation),
+		"clientDataJSON":    B64(clientData),
+		"attestationObject": B64(attestation),
 		"transports":        []string{"internal", "hybrid"},
 	})
 }
 
-func (a *authenticator) assert(options []byte) []byte {
+func (a *Authenticator) Assert(options []byte) []byte {
 	a.t.Helper()
 	clientData := a.clientData("webauthn.get", a.challenge(options))
-	a.counter++
+	a.Counter++
 	counter := make([]byte, 4)
-	binary.BigEndian.PutUint32(counter, a.counter)
+	binary.BigEndian.PutUint32(counter, a.Counter)
 	authData := concat(a.rpIDHash(), []byte{flagUserPresent | flagUserVerified}, counter)
 	clientHash := sha256.Sum256(clientData)
 	digest := sha256.Sum256(concat(authData, clientHash[:]))
@@ -184,17 +184,17 @@ func (a *authenticator) assert(options []byte) []byte {
 		a.t.Fatal(err)
 	}
 	return a.response(map[string]any{
-		"clientDataJSON":    b64(clientData),
-		"authenticatorData": b64(authData),
-		"signature":         b64(signature),
-		"userHandle":        b64(a.userHandle),
+		"clientDataJSON":    B64(clientData),
+		"authenticatorData": B64(authData),
+		"signature":         B64(signature),
+		"userHandle":        B64(a.userHandle),
 	})
 }
 
-func (a *authenticator) response(inner map[string]any) []byte {
+func (a *Authenticator) response(inner map[string]any) []byte {
 	out, err := json.Marshal(map[string]any{
-		"id":       b64(a.credential),
-		"rawId":    b64(a.credential),
+		"id":       B64(a.Credential),
+		"rawId":    B64(a.Credential),
 		"type":     "public-key",
 		"response": inner,
 	})

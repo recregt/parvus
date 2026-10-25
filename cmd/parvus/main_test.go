@@ -1,0 +1,33 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+package main
+
+import (
+	"net"
+	"path/filepath"
+	"testing"
+)
+
+func TestRestartAfterACrashReplacesAStaleSocketButNeverALiveOne(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "parvus.sock")
+	crashed, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	crashed.(*net.UnixListener).SetUnlinkOnClose(false)
+	if err := crashed.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	restarted, err := listenUnix(path)
+	if err != nil {
+		t.Fatalf("stale socket blocked the restart: %v", err)
+	}
+	defer func() { _ = restarted.Close() }()
+
+	if _, err := listenUnix(path); err == nil {
+		t.Fatal("a socket served by a live process was taken over")
+	}
+}

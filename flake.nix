@@ -31,6 +31,8 @@
           ];
         };
 
+      vendorHash = "sha256-m6w28qCHfZl8v8F4/QIfCMCwJeEGQK9Ld5CwQOVDD1M=";
+
       goCheck =
         pkgs: attrs:
         pkgs.buildGoModule (
@@ -38,7 +40,7 @@
             pname = "parvus-check";
             version = "0";
             src = sourceOf pkgs;
-            vendorHash = "sha256-m6w28qCHfZl8v8F4/QIfCMCwJeEGQK9Ld5CwQOVDD1M=";
+            inherit vendorHash;
             doCheck = false;
             installPhase = "touch $out";
           }
@@ -46,6 +48,26 @@
         );
     in
     {
+      packages = forEach (pkgs: {
+        default = pkgs.buildGoModule {
+          pname = "parvus";
+          version = "0";
+          src = sourceOf pkgs;
+          inherit vendorHash;
+          subPackages = [ "cmd/parvus" ];
+          env.CGO_ENABLED = "0";
+          ldflags = [
+            "-s"
+            "-w"
+          ];
+          doCheck = false;
+          meta = {
+            mainProgram = "parvus";
+            license = pkgs.lib.licenses.mpl20;
+          };
+        };
+      });
+
       checks = forEach (pkgs: {
         tests = goCheck pkgs {
           doCheck = true;
