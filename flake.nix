@@ -49,6 +49,29 @@
           // attrs
         );
 
+      docsThemes =
+        pkgs:
+        pkgs.linkFarm "parvus-docs-themes" [
+          {
+            name = "hextra";
+            path = pkgs.fetchFromGitHub {
+              owner = "imfing";
+              repo = "hextra";
+              rev = "v0.13.0";
+              hash = "sha256-7wS2xUnpSkWfc0aJ9YBc7VasXZDS0m/xX3F0+cbZzeA=";
+            };
+          }
+        ];
+
+      docsSite =
+        pkgs:
+        pkgs.runCommand "parvus-docs" { nativeBuildInputs = [ pkgs.hugo ]; } ''
+          cp -r ${./docs} $TMPDIR/docs
+          chmod -R u+w $TMPDIR/docs
+          hugo --source $TMPDIR/docs --themesDir ${docsThemes pkgs} \
+            --cacheDir $TMPDIR/hugo-cache --destination $out --minify --panicOnWarning
+        '';
+
       goProgram =
         pkgs: name: path:
         pkgs.buildGoModule {
@@ -72,6 +95,7 @@
     {
       packages = forEach (pkgs: {
         default = goProgram pkgs "parvus" "cmd/parvus";
+        docs = docsSite pkgs;
       });
 
       checks = forEach (pkgs: {
@@ -101,6 +125,8 @@
           '';
         };
 
+        docs = docsSite pkgs;
+
         lint = goCheck pkgs {
           nativeBuildInputs = [ pkgs.golangci-lint ];
           buildPhase = ''
@@ -114,6 +140,7 @@
           cd ${./.}
           addlicense -check \
             -ignore 'LICENSE' -ignore '**/*.mod' -ignore '**/*.sum' -ignore 'flake.lock' \
+            -ignore 'docs/assets/vendor/**' \
             -ignore '.git/**' .
           touch $out
         '';
@@ -146,7 +173,9 @@
             pkgs.govulncheck
             pkgs.addlicense
             pkgs.lefthook
+            pkgs.hugo
           ];
+          HUGO_THEMESDIR = docsThemes pkgs;
         };
       });
     };

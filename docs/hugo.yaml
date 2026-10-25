@@ -1,0 +1,72 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+baseURL: https://parvus.recregt.com/
+title: Parvus
+locale: en
+theme: hextra
+enableRobotsTXT: true
+refLinksErrorLevel: ERROR
+
+markup:
+  highlight:
+    noClasses: false
+  goldmark:
+    renderer:
+      unsafe: true
+
+menu:
+  main:
+    - name: Guide
+      pageRef: /guide
+      weight: 1
+    - name: Reference
+      pageRef: /reference
+      weight: 2
+    - name: Search
+      weight: 3
+      params:
+        type: search
+    - name: GitHub
+      weight: 4
+      url: https://github.com/recregt/parvus
+      params:
+        icon: github
+
+params:
+  description: Passkey sign-in for any backend, in one small binary.
+  navbar:
+    displayTitle: true
+    displayLogo: true
+    logo:
+      path: images/logo.svg
+      dark: images/logo-dark.svg
+    width: normal
+  theme:
+    default: system
+    displayToggle: true
+  footer:
+    enable: true
+    displayCopyright: true
+    displayPoweredBy: false
+    width: normal
+  displayUpdatedDate: false
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+      tokenize: forward
+      js: vendor/flexsearch-0.8.143.bundle.min.js
+  editURL:
+    enable: true
+    base: https://github.com/recregt/parvus/edit/main/docs/content
+  highlight:
+    copy:
+      enable: true
+      display: hover
+  page:
+    width: normal
+    contextMenu:
+      enable: false
