@@ -27,7 +27,8 @@
             ./go.sum
             ./.golangci.yml
             ./internal
-            (pkgs.lib.fileset.maybeMissing ./cmd)
+            ./cmd
+            ./examples
           ];
         };
 
