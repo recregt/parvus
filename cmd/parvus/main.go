@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -30,10 +31,22 @@ const (
 	privateFiles = 0o077
 )
 
+var version = "dev"
+
 func main() {
-	if err := run(); err != nil {
-		slog.Error("parvus stopped", "error", err)
+	showVersion := flag.Bool("version", false, "print the version and exit")
+	flag.Parse()
+	switch {
+	case *showVersion:
+		fmt.Println(version)
+	case flag.NArg() > 0:
+		slog.Error("parvus takes no arguments; configure it with PARVUS_* environment variables", "arguments", flag.Args())
 		os.Exit(1)
+	default:
+		if err := run(); err != nil {
+			slog.Error("parvus stopped", "error", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -71,7 +84,7 @@ func run() error {
 	server := &http.Server{Handler: api.New(eng, cfg.Secret, log)}
 	served := make(chan error, 1)
 	go func() { served <- server.Serve(listener) }()
-	log.Info("listening", "address", listener.Addr().String())
+	log.Info("listening", "address", listener.Addr().String(), "version", version)
 
 	select {
 	case err := <-served:
