@@ -19,7 +19,7 @@ import (
 	"github.com/recregt/parvus/internal/api"
 	"github.com/recregt/parvus/internal/config"
 	"github.com/recregt/parvus/internal/engine"
-	"github.com/recregt/parvus/internal/store"
+	"github.com/recregt/parvus/internal/store/sqlite"
 )
 
 const (
@@ -43,7 +43,7 @@ func run() error {
 	defer stop()
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	db, err := store.Open(ctx, cfg.DB)
+	db, err := sqlite.Open(ctx, cfg.DB)
 	if err != nil {
 		return err
 	}

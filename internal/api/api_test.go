@@ -6,13 +6,11 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +18,7 @@ import (
 	"github.com/recregt/parvus/internal/api"
 	"github.com/recregt/parvus/internal/engine"
 	"github.com/recregt/parvus/internal/softauth"
-	"github.com/recregt/parvus/internal/store"
+	"github.com/recregt/parvus/internal/store/model"
 )
 
 const (
@@ -39,12 +37,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	db, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "parvus.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	eng, err := engine.New(db, engine.Config{
+	eng, err := engine.New(model.New(), engine.Config{
 		RPID: rpID, RPName: "Example", Origins: []string{origin},
 		Pepper: []byte("pepper"), MaxCredentials: 5,
 	})

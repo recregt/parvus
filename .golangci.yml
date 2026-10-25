@@ -37,7 +37,7 @@ linters:
       require-specific: true
   exclusions:
     rules:
-      - path: (_test\.go|^internal/softauth/)
+      - path: (_test\.go|^internal/softauth/|^internal/store/contract/)
         linters:
           - gosec
           - mnd

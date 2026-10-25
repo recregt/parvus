@@ -37,7 +37,7 @@ type Config struct {
 }
 
 type Engine struct {
-	store          *store.Store
+	store          store.Store
 	wa             *webauthn.WebAuthn
 	pepper         []byte
 	maxCredentials int
@@ -94,7 +94,7 @@ type RecoverResult struct {
 	CredentialCount int
 }
 
-func New(s *store.Store, cfg Config) (*Engine, error) {
+func New(s store.Store, cfg Config) (*Engine, error) {
 	if len(cfg.Pepper) == 0 || cfg.MaxCredentials < 1 {
 		return nil, fmt.Errorf("%w: pepper and credential limit are required", ErrInvalid)
 	}
@@ -220,7 +220,7 @@ func (e *Engine) BeginRegistration(ctx context.Context, in RegistrationInput) ([
 	if env.Name == "" {
 		env.Name = in.UserID
 	}
-	user, err := e.store.User(ctx, in.UserID)
+	user, err := e.store.User(ctx, in.UserID, e.unix())
 	switch {
 	case errors.Is(err, store.ErrNotFound):
 	case err != nil:
@@ -229,8 +229,7 @@ func (e *Engine) BeginRegistration(ctx context.Context, in RegistrationInput) ([
 		return nil, store.ErrExists
 	default:
 		hash := secret.Hash(in.EnrollToken)
-		if in.EnrollToken == "" || user.EnrollUntil <= e.unix() ||
-			subtle.ConstantTimeCompare(hash, user.EnrollHash) != 1 {
+		if user.EnrollHash == nil || subtle.ConstantTimeCompare(hash, user.EnrollHash) != 1 {
 			return nil, authFailure(errors.New("enrollment token rejected"))
 		}
 		env.EnrollHash = hash
@@ -302,7 +301,7 @@ func (e *Engine) BeginAddCredential(ctx context.Context, userID string, ttl time
 	if err := validTTL(ttl); err != nil {
 		return nil, err
 	}
-	user, err := e.store.User(ctx, userID)
+	user, err := e.store.User(ctx, userID, e.unix())
 	if err != nil {
 		return nil, err
 	}
@@ -497,7 +496,7 @@ func (e *Engine) Recover(ctx context.Context, userID, code string, ttl time.Dura
 	if err != nil {
 		return RecoverResult{}, err
 	}
-	user, err := e.store.User(ctx, userID)
+	user, err := e.store.User(ctx, userID, e.unix())
 	if err != nil {
 		return RecoverResult{}, err
 	}

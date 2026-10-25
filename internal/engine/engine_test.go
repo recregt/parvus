@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -18,6 +17,7 @@ import (
 	"github.com/recregt/parvus/internal/engine"
 	"github.com/recregt/parvus/internal/softauth"
 	"github.com/recregt/parvus/internal/store"
+	"github.com/recregt/parvus/internal/store/model"
 )
 
 const (
@@ -61,14 +61,8 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	ctx := context.Background()
-	db, err := store.Open(ctx, filepath.Join(t.TempDir(), "parvus.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
 	clk := &clock{now: time.Unix(startingUnix, 0)}
-	eng, err := engine.New(db, engine.Config{
+	eng, err := engine.New(model.New(), engine.Config{
 		RPID:           rpID,
 		RPName:         "Example",
 		Origins:        []string{origin},
@@ -79,7 +73,7 @@ func newHarness(t *testing.T) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &harness{t: t, ctx: ctx, engine: eng, clock: clk}
+	return &harness{t: t, ctx: context.Background(), engine: eng, clock: clk}
 }
 
 func (h *harness) register(userID, slot string) (*softauth.Authenticator, string) {
