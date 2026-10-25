@@ -388,6 +388,26 @@ func TestEnrollmentTokenExpires(t *testing.T) {
 	}
 }
 
+func TestEnrollmentThatOutlivesItsTokenFailsAsAuthentication(t *testing.T) {
+	h := newHarness(t)
+	h.register(userAlice, slotOne)
+	token, _, err := h.engine.Reset(h.ctx, userAlice, ceremonyTTL/2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, err := h.engine.BeginRegistration(h.ctx, engine.RegistrationInput{
+		Slot: slotTwo, UserID: userAlice, TTL: ceremonyTTL, EnrollToken: token,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.clock.Advance(ceremonyTTL * 3 / 4)
+	device := softauth.New(t, rpID, origin)
+	if _, err := h.engine.FinishRegistration(h.ctx, slotTwo, device.Register(options)); !errors.Is(err, engine.ErrAuth) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestAddAndRemoveCredentials(t *testing.T) {
 	h := newHarness(t)
 	first, _ := h.register(userAlice, slotOne)

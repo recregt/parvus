@@ -269,6 +269,9 @@ func (e *Engine) FinishRegistration(ctx context.Context, slot string, body []byt
 	}
 	if env.EnrollHash != nil {
 		err = e.store.Enroll(ctx, *credential, env.EnrollHash, mac, e.unix())
+		if errors.Is(err, store.ErrNotFound) {
+			err = authFailure(err)
+		}
 	} else {
 		err = e.store.CreateUser(ctx, *credential, mac, e.unix())
 	}
