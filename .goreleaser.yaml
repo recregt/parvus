@@ -1,0 +1,65 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+version: 2
+project_name: parvus
+
+builds:
+  - id: parvus
+    main: ./cmd/parvus
+    binary: parvus
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    include:
+      - "^feat"
+      - "^fix"
+  groups:
+    - title: Features
+      regexp: "^feat"
+      order: 0
+    - title: Fixes
+      regexp: "^fix"
+      order: 1
+
+dockers_v2:
+  - images:
+      - ghcr.io/recregt/parvus
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.source: https://github.com/recregt/parvus
+      org.opencontainers.image.documentation: https://parvus.recregt.com
+      org.opencontainers.image.licenses: MPL-2.0
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.description: Passkey sign-in for any backend, in one small binary.
+
+release:
+  github:
+    owner: recregt
+    name: parvus
