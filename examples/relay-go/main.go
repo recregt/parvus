@@ -88,6 +88,7 @@ func (r relay) registrationFinish(x exchange) result {
 func (r relay) loginBegin(x exchange) result {
 	return r.callParvus(x, "/v1/login/begin", map[string]any{
 		"slot":        x.slot,
+		"user_id":     x.body.Username,
 		"ttl_seconds": ceremonyTTLSeconds,
 	})
 }

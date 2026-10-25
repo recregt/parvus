@@ -4,35 +4,27 @@
 
 import { login, register } from './parvus.js'
 
-const username = document.querySelector('#username')
-const result = document.querySelector('#result')
+const username = document.getElementById('username')
+const output = document.getElementById('output')
 
-document.querySelector('#register').addEventListener('click', () =>
-  show(() => register('/auth', { username: username.value })),
-)
+onClick('register', () => register({ username: username.value }))
+onClick('login', () => login().then(currentUser))
+onClick('logout', () => logout().then(currentUser))
 
-document.querySelector('#login').addEventListener('click', () =>
-  show(async () => {
-    await login('/auth')
-    return whoAmI()
-  }),
-)
-
-document.querySelector('#logout').addEventListener('click', () =>
-  show(async () => {
-    await fetch('/auth/logout', { method: 'POST' })
-    return whoAmI()
-  }),
-)
-
-async function show(action) {
-  try {
-    result.textContent = JSON.stringify(await action(), null, 2)
-  } catch (error) {
-    result.textContent = JSON.stringify({ error: error.message }, null, 2)
-  }
+function onClick(id, action) {
+  document.getElementById(id).addEventListener('click', () =>
+    action().then(show, (error) => show({ error: error.message })),
+  )
 }
 
-function whoAmI() {
+function show(value) {
+  output.textContent = JSON.stringify(value, null, 2)
+}
+
+function currentUser() {
   return fetch('/auth/me').then((response) => response.json())
+}
+
+function logout() {
+  return fetch('/auth/logout', { method: 'POST' })
 }
