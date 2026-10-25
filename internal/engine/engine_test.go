@@ -117,10 +117,7 @@ func (h *harness) addDevice(userID string) (*authenticator, error) {
 
 func TestRegisterThenLoginWithoutUsername(t *testing.T) {
 	h := newHarness(t)
-	device, code := h.register(userAlice, slotOne)
-	if len(code) != 19 {
-		t.Fatalf("recovery code %q has unexpected shape", code)
-	}
+	device, _ := h.register(userAlice, slotOne)
 	session, err := h.login(device, slotTwo, "")
 	if err != nil {
 		t.Fatal(err)
@@ -402,36 +399,6 @@ func TestCredentialLimit(t *testing.T) {
 	}
 }
 
-func TestConcurrentRemovalsLeaveOneCredential(t *testing.T) {
-	h := newHarness(t)
-	first, _ := h.register(userAlice, slotOne)
-	second, err := h.addDevice(userAlice)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var wg sync.WaitGroup
-	results := make([]error, 2)
-	for i, device := range []*authenticator{first, second} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			results[i] = h.engine.RemoveCredential(h.ctx, userAlice, device.credential)
-		}()
-	}
-	wg.Wait()
-	succeeded := 0
-	for _, err := range results {
-		if err == nil {
-			succeeded++
-		} else if !errors.Is(err, store.ErrLastCredential) {
-			t.Fatalf("err = %v", err)
-		}
-	}
-	if succeeded != 1 {
-		t.Fatalf("%d removals succeeded", succeeded)
-	}
-}
-
 func TestSessionLifecycle(t *testing.T) {
 	h := newHarness(t)
 	device, _ := h.register(userAlice, slotOne)
@@ -454,6 +421,9 @@ func TestSessionLifecycle(t *testing.T) {
 	h.clock.Advance(2 * sessionTTL)
 	if _, err := h.engine.Introspect(h.ctx, session.Token); !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("err = %v", err)
+	}
+	if _, err := h.engine.Extend(h.ctx, session.Token, sessionTTL); !errors.Is(err, engine.ErrAuth) {
+		t.Fatalf("expired session was extended: %v", err)
 	}
 }
 

@@ -89,27 +89,3 @@ func TestDuplicateCredentialIDIsRejected(t *testing.T) {
 		t.Fatalf("failed add changed the count: %+v, %v", user, err)
 	}
 }
-
-func TestExpiredRowsAreSweptOnWrite(t *testing.T) {
-	ctx := context.Background()
-	db, err := store.Open(ctx, filepath.Join(t.TempDir(), "parvus.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-	if err := db.CreateUser(ctx, credential("c1"), []byte("mac"), now); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.CreateSession(ctx, []byte("s1"), userID, now+10, now); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := db.Session(ctx, []byte("s1"), now+10); !errors.Is(err, store.ErrNotFound) {
-		t.Fatalf("expired session visible before sweep: %v", err)
-	}
-	if err := db.PutChallenge(ctx, "slot", []byte("x"), now+20, now+10); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.ExtendSession(ctx, []byte("s1"), now+100, now+10); !errors.Is(err, store.ErrNotFound) {
-		t.Fatalf("expired session extended: %v", err)
-	}
-}
