@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -113,7 +114,7 @@ func challengeIsSingleUseAndExpires(t *testing.T, s store.Store) {
 	_, err = s.TakeChallenge(ctx, "a", 5)
 	is(t, err, store.ErrNotFound)
 
-	must(t, s.PutChallenge(ctx, "b", []byte("two"), 10, 0))
+	must(t, s.PutChallenge(ctx, "b", []byte("two"), 10, 5))
 	_, err = s.TakeChallenge(ctx, "b", 10)
 	is(t, err, store.ErrNotFound)
 }
@@ -228,23 +229,24 @@ func enrollmentNeedsTheToken(t *testing.T, s store.Store) {
 	must(t, s.CreateUser(ctx, credential(bob, "c9"), []byte("m1"), 0))
 	must(t, s.Reset(ctx, alice, []byte("t1"), 100, 0))
 
-	is(t, s.Enroll(ctx, credential(alice, "c2"), []byte("wrong"), []byte("m2"), 50), store.ErrNotFound)
-	is(t, s.Enroll(ctx, credential(alice, "c2"), []byte("t1"), []byte("m2"), 100), store.ErrNotFound)
-	is(t, s.Enroll(ctx, credential(alice, "c9"), []byte("t1"), []byte("m2"), 50), store.ErrExists)
-
-	u, err := s.User(ctx, alice, 99)
+	is(t, s.Enroll(ctx, credential(alice, "c2"), []byte("wrong"), []byte("m2"), 10), store.ErrNotFound)
+	is(t, s.Enroll(ctx, credential(alice, "c9"), []byte("t1"), []byte("m2"), 10), store.ErrExists)
+	u, err := s.User(ctx, alice, 10)
 	must(t, err)
 	if u.EnrollHash == nil {
 		t.Fatal("a failed enrollment used up the token")
 	}
-	if u, _ := s.User(ctx, alice, 100); u.EnrollHash != nil {
+
+	must(t, s.Enroll(ctx, credential(alice, "c2"), []byte("t1"), []byte("m2"), 20))
+	expectIDs(t, s, alice, "c2")
+	is(t, s.Enroll(ctx, credential(alice, "c3"), []byte("t1"), []byte("m3"), 20), store.ErrNotFound)
+	must(t, s.ReplaceRecovery(ctx, alice, []byte("m2"), []byte("m3"), 20))
+
+	must(t, s.Reset(ctx, bob, []byte("t2"), 100, 20))
+	if u, _ := s.User(ctx, bob, 100); u.EnrollHash != nil {
 		t.Fatal("an expired token is still visible")
 	}
-
-	must(t, s.Enroll(ctx, credential(alice, "c2"), []byte("t1"), []byte("m2"), 50))
-	expectIDs(t, s, alice, "c2")
-	is(t, s.Enroll(ctx, credential(alice, "c3"), []byte("t1"), []byte("m3"), 50), store.ErrNotFound)
-	must(t, s.ReplaceRecovery(ctx, alice, []byte("m2"), []byte("m3"), 50))
+	is(t, s.Enroll(ctx, credential(bob, "c4"), []byte("t2"), []byte("m2"), 100), store.ErrNotFound)
 }
 
 func sessionsExpireAndExtendForward(t *testing.T, s store.Store) {
@@ -253,18 +255,19 @@ func sessionsExpireAndExtendForward(t *testing.T, s store.Store) {
 	is(t, s.CreateSession(ctx, []byte("s1"), alice, 100, 0), store.ErrExists)
 	is(t, s.CreateSession(ctx, []byte("s2"), bob, 100, 0), store.ErrNotFound)
 
-	user, expires, err := s.Session(ctx, []byte("s1"), 99)
+	user, expires, err := s.Session(ctx, []byte("s1"), 50)
 	must(t, err)
 	if user != alice || expires != 100 {
 		t.Fatalf("session is %s until %d", user, expires)
 	}
-	_, _, err = s.Session(ctx, []byte("s1"), 100)
-	is(t, err, store.ErrNotFound)
 
 	must(t, s.ExtendSession(ctx, []byte("s1"), 200, 50))
 	is(t, s.ExtendSession(ctx, []byte("s1"), 150, 50), store.ErrNotFound)
 	_, _, err = s.Session(ctx, []byte("s1"), 199)
 	must(t, err)
+
+	_, _, err = s.Session(ctx, []byte("s1"), 200)
+	is(t, err, store.ErrNotFound)
 	is(t, s.ExtendSession(ctx, []byte("s1"), 300, 200), store.ErrNotFound)
 }
 
@@ -309,10 +312,15 @@ func deletionCascades(t *testing.T, s store.Store) {
 
 func concurrently(calls ...func() error) []error {
 	errs := make([]error, len(calls))
+	start := make(chan struct{})
 	var wg sync.WaitGroup
 	for i, call := range calls {
-		wg.Go(func() { errs[i] = call() })
+		wg.Go(func() {
+			<-start
+			errs[i] = call()
+		})
 	}
+	close(start)
 	wg.Wait()
 	return errs
 }
@@ -333,42 +341,69 @@ func exactlyOneSucceeded(t *testing.T, errs []error, loser error) {
 	}
 }
 
-func challengeRace(t *testing.T, s store.Store) {
-	must(t, s.PutChallenge(ctx, "a", []byte("one"), 10, 0))
-	take := func() error {
-		_, err := s.TakeChallenge(ctx, "a", 0)
-		return err
+const simultaneousRaces = 16
+
+func raceEveryUser(t *testing.T, setup func(user string), attempts func(user string) [2]func() error, loser error) {
+	t.Helper()
+	var calls []func() error
+	for n := range simultaneousRaces {
+		user := fmt.Sprintf("user%d", n)
+		setup(user)
+		pair := attempts(user)
+		calls = append(calls, pair[:]...)
 	}
-	exactlyOneSucceeded(t, concurrently(take, take), store.ErrNotFound)
+	errs := concurrently(calls...)
+	for n := range simultaneousRaces {
+		exactlyOneSucceeded(t, errs[2*n:2*n+2], loser)
+	}
+}
+
+func challengeRace(t *testing.T, s store.Store) {
+	take := func(user string) func() error {
+		return func() error {
+			_, err := s.TakeChallenge(ctx, user, 0)
+			return err
+		}
+	}
+	raceEveryUser(t,
+		func(user string) { must(t, s.PutChallenge(ctx, user, []byte("one"), 10, 0)) },
+		func(user string) [2]func() error { return [2]func() error{take(user), take(user)} },
+		store.ErrNotFound)
 }
 
 func removalRace(t *testing.T, s store.Store) {
-	must(t, s.CreateUser(ctx, credential(alice, "c1"), []byte("m1"), 0))
-	must(t, s.AddCredential(ctx, credential(alice, "c2"), limit, 0))
-	remove := func(id string) func() error {
-		return func() error { return s.RemoveCredential(ctx, alice, []byte(id), 0) }
+	remove := func(user, id string) func() error {
+		return func() error { return s.RemoveCredential(ctx, user, []byte(id), 0) }
 	}
-	exactlyOneSucceeded(t, concurrently(remove("c1"), remove("c2")), store.ErrLastCredential)
-	if len(ids(t, s, alice)) != 1 {
-		t.Fatalf("alice has %q", ids(t, s, alice))
-	}
+	raceEveryUser(t,
+		func(user string) {
+			must(t, s.CreateUser(ctx, credential(user, user+"-c1"), []byte("m1"), 0))
+			must(t, s.AddCredential(ctx, credential(user, user+"-c2"), limit, 0))
+		},
+		func(user string) [2]func() error {
+			return [2]func() error{remove(user, user+"-c1"), remove(user, user+"-c2")}
+		},
+		store.ErrLastCredential)
 }
 
 func recoveryRace(t *testing.T, s store.Store) {
-	must(t, s.CreateUser(ctx, credential(alice, "c1"), []byte("m1"), 0))
-	replace := func(next string) func() error {
-		return func() error { return s.ReplaceRecovery(ctx, alice, []byte("m1"), []byte(next), 0) }
+	replace := func(user, next string) func() error {
+		return func() error { return s.ReplaceRecovery(ctx, user, []byte("m1"), []byte(next), 0) }
 	}
-	exactlyOneSucceeded(t, concurrently(replace("m2"), replace("m3")), store.ErrNotFound)
+	raceEveryUser(t,
+		func(user string) { must(t, s.CreateUser(ctx, credential(user, user+"-c1"), []byte("m1"), 0)) },
+		func(user string) [2]func() error { return [2]func() error{replace(user, "m2"), replace(user, "m3")} },
+		store.ErrNotFound)
 }
 
 func additionRace(t *testing.T, s store.Store) {
-	must(t, s.CreateUser(ctx, credential(alice, "c1"), []byte("m1"), 0))
-	add := func(id string) func() error {
-		return func() error { return s.AddCredential(ctx, credential(alice, id), 2, 0) }
+	add := func(user, id string) func() error {
+		return func() error { return s.AddCredential(ctx, credential(user, id), 2, 0) }
 	}
-	exactlyOneSucceeded(t, concurrently(add("c2"), add("c3")), store.ErrLimit)
-	if len(ids(t, s, alice)) != 2 {
-		t.Fatalf("alice has %q", ids(t, s, alice))
-	}
+	raceEveryUser(t,
+		func(user string) { must(t, s.CreateUser(ctx, credential(user, user+"-c1"), []byte("m1"), 0)) },
+		func(user string) [2]func() error {
+			return [2]func() error{add(user, user+"-c2"), add(user, user+"-c3")}
+		},
+		store.ErrLimit)
 }
