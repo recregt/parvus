@@ -166,6 +166,7 @@ func (a *authenticator) register(options []byte) []byte {
 	return a.response(map[string]any{
 		"clientDataJSON":    b64(clientData),
 		"attestationObject": b64(attestation),
+		"transports":        []string{"internal", "hybrid"},
 	})
 }
 

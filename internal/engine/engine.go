@@ -340,6 +340,9 @@ func (e *Engine) BeginLogin(ctx context.Context, slot, userID string, ttl time.D
 		if len(acct.credentials) == 0 {
 			acct.credentials = []webauthn.Credential{{ID: secret.Derive(e.pepper, "credential", userID)}}
 		}
+		for i := range acct.credentials {
+			acct.credentials[i].Transport = nil
+		}
 		assertion, session, err = e.wa.BeginLogin(acct, webauthn.WithUserVerification(protocol.VerificationRequired))
 	}
 	if err != nil {

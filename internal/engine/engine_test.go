@@ -143,8 +143,11 @@ func TestLoginWithUserIDListsCredentials(t *testing.T) {
 	}
 	var parsed struct {
 		PublicKey struct {
-			Allow   []struct{ ID string } `json:"allowCredentials"`
-			Timeout int                   `json:"timeout"`
+			Allow []struct {
+				ID         string   `json:"id"`
+				Transports []string `json:"transports"`
+			} `json:"allowCredentials"`
+			Timeout int `json:"timeout"`
 		} `json:"publicKey"`
 	}
 	if err := json.Unmarshal(options, &parsed); err != nil {
@@ -152,6 +155,9 @@ func TestLoginWithUserIDListsCredentials(t *testing.T) {
 	}
 	if len(parsed.PublicKey.Allow) != 1 || parsed.PublicKey.Allow[0].ID != b64(device.credential) {
 		t.Fatalf("allowCredentials = %+v", parsed.PublicKey.Allow)
+	}
+	if len(parsed.PublicKey.Allow[0].Transports) != 0 {
+		t.Fatalf("transports leaked into allowCredentials: %+v", parsed.PublicKey.Allow[0])
 	}
 	if parsed.PublicKey.Timeout != int(ceremonyTTL.Milliseconds()) {
 		t.Fatalf("timeout = %d", parsed.PublicKey.Timeout)
