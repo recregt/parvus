@@ -31,6 +31,7 @@ checksum:
 changelog:
   use: git
   sort: asc
+  abbrev: -1
   filters:
     include:
       - "^feat"
