@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-FROM registry.fedoraproject.org/fedora:43@sha256:6bcda9dfa23df4cb53a019ef2e480a54db32f688fa514aacfbb5f050814a03c8
+FROM registry.fedoraproject.org/fedora:46@sha256:02031526999d46c9f9c6490eeccf4cafd735438b9d0fb5e1d9fc941d7886e2ff
 
 RUN dnf install -y -q systemd curl shadow-utils \
     && dnf clean all
