@@ -91,6 +91,9 @@ homebrew_casks:
 checksum:
   name_template: checksums.txt
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
 dockers_v2:
   - images:
       - ghcr.io/recregt/parvus
