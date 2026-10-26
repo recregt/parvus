@@ -355,6 +355,9 @@ func TestResetThenEnrollWithToken(t *testing.T) {
 	if _, err := h.login(device, slotThree, ""); !errors.Is(err, engine.ErrAuth) {
 		t.Fatalf("old credential survived reset: %v", err)
 	}
+	if _, err := h.engine.BeginAddCredential(h.ctx, userAlice, ceremonyTTL); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("passkey added to a reset account: %v", err)
+	}
 	begin := func(enroll string) ([]byte, error) {
 		return h.engine.BeginRegistration(h.ctx, engine.RegistrationInput{
 			Slot: enrollmentSlot, UserID: userAlice, TTL: ceremonyTTL, EnrollToken: enroll,
@@ -541,6 +544,25 @@ func TestInvalidInputsAreRejected(t *testing.T) {
 	for _, in := range cases {
 		if _, err := h.engine.BeginRegistration(h.ctx, in); !errors.Is(err, engine.ErrInvalid) {
 			t.Fatalf("%+v: err = %v", in, err)
+		}
+	}
+	for _, login := range []struct{ slot, userID string }{
+		{"", ""},
+		{slotOne, strings.Repeat("a", 65)},
+	} {
+		if _, err := h.engine.BeginLogin(h.ctx, login.slot, login.userID, ceremonyTTL); !errors.Is(err, engine.ErrInvalid) {
+			t.Fatalf("login %+v: err = %v", login, err)
+		}
+	}
+}
+
+func TestEngineRequiresPepperAndCredentialLimit(t *testing.T) {
+	for _, cfg := range []engine.Config{
+		{RPID: rpID, RPName: "Example", Origins: []string{origin}, MaxCredentials: credentialCap},
+		{RPID: rpID, RPName: "Example", Origins: []string{origin}, Pepper: []byte(pepperFixture)},
+	} {
+		if _, err := engine.New(model.New(), cfg); !errors.Is(err, engine.ErrInvalid) {
+			t.Fatalf("pepper %q, limit %d: err = %v", cfg.Pepper, cfg.MaxCredentials, err)
 		}
 	}
 }
