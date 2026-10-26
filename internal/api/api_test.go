@@ -18,6 +18,7 @@ import (
 
 	"github.com/recregt/parvus/internal/api"
 	"github.com/recregt/parvus/internal/engine"
+	"github.com/recregt/parvus/internal/secret"
 	"github.com/recregt/parvus/internal/softauth"
 	"github.com/recregt/parvus/internal/store/model"
 )
@@ -32,11 +33,11 @@ const (
 )
 
 type harness struct {
-	t       *testing.T
+	t       testing.TB
 	handler http.Handler
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t testing.TB) *harness {
 	t.Helper()
 	eng, err := engine.New(model.New(), engine.Config{
 		RPID: rpID, RPName: "Example", Origins: []string{origin},
@@ -259,4 +260,74 @@ func (h *harness) options(method, path string, body any) []byte {
 		h.t.Fatalf("%s %s: status %d: %s", method, path, status, data)
 	}
 	return data
+}
+
+var errorCodes = map[int][]string{
+	http.StatusBadRequest:   {"invalid_request"},
+	http.StatusUnauthorized: {"unauthorized"},
+	http.StatusForbidden:    {"authentication_failed"},
+	http.StatusNotFound:     {"not_found"},
+	http.StatusConflict:     {"already_exists", "last_credential", "credential_limit"},
+}
+
+func (h *harness) registerAlice() {
+	h.t.Helper()
+	device := softauth.New(h.t, rpID, origin)
+	options := h.options(http.MethodPost, "/v1/registration/begin",
+		map[string]any{"slot": "reg", "user_id": userAlice, "ttl_seconds": ceremony})
+	h.expect(http.StatusOK, http.MethodPost, "/v1/registration/finish",
+		map[string]any{"slot": "reg", "credential": json.RawMessage(device.Register(options))}, nil)
+}
+
+func FuzzNoRequestFailsInternallyOrSignsIn(f *testing.F) {
+	code, err := secret.Code()
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, seed := range []struct{ method, target, body string }{
+		{http.MethodPost, "/v1/registration/begin", `{"slot":"reg","user_id":"bob","ttl_seconds":60}`},
+		{http.MethodPost, "/v1/registration/finish", `{"slot":"reg","credential":{}}`},
+		{http.MethodPost, "/v1/login/begin", `{"slot":"login","user_id":"alice","ttl_seconds":60}`},
+		{http.MethodPost, "/v1/login/finish", `{"slot":"login","credential":{},"ttl_seconds":3600}`},
+		{http.MethodPost, "/v1/recover", `{"user_id":"alice","code":"` + code + `","ttl_seconds":3600}`},
+		{http.MethodPost, "/v1/introspect", `{"token":"token","extend_by_seconds":60}`},
+		{http.MethodPost, "/v1/logout", `{"token":"token"}`},
+		{http.MethodPost, "/v1/users/alice/logout", ``},
+		{http.MethodPost, "/v1/users/alice/credentials/begin", `{"ttl_seconds":60}`},
+		{http.MethodPost, "/v1/users/alice/credentials/finish", `{"credential":{}}`},
+		{http.MethodGet, "/v1/users/alice/credentials", ``},
+		{http.MethodDelete, "/v1/users/alice/credentials/AAAA", ``},
+		{http.MethodPost, "/v1/users/alice/codes", ``},
+		{http.MethodPost, "/v1/users/alice/reset", `{"ttl_seconds":3600}`},
+		{http.MethodDelete, "/v1/users/alice", ``},
+	} {
+		f.Add(seed.method, seed.target, []byte(seed.body))
+	}
+	f.Fuzz(func(t *testing.T, method, target string, body []byte) {
+		request, err := http.NewRequestWithContext(t.Context(), method, target, bytes.NewReader(body))
+		if err != nil || !strings.HasPrefix(target, "/") {
+			return
+		}
+		request.Header.Set("Authorization", "Bearer "+hostSecret)
+		h := newHarness(t)
+		h.registerAlice()
+		recorder := httptest.NewRecorder()
+		h.handler.ServeHTTP(recorder, request)
+		status, data := recorder.Code, recorder.Body.Bytes()
+
+		if status >= http.StatusBadRequest {
+			var refused struct {
+				Error string `json:"error"`
+			}
+			decoder := json.NewDecoder(bytes.NewReader(data))
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&refused); err != nil || !slices.Contains(errorCodes[status], refused.Error) {
+				t.Fatalf("%s %s answered %d %s", method, target, status, data)
+			}
+		}
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(data, &fields) == nil && fields["token"] != nil {
+			t.Fatalf("%s %s signed someone in: %s", method, target, data)
+		}
+	})
 }
