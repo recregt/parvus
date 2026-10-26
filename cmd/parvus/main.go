@@ -109,7 +109,7 @@ func notifyReady() error {
 	if address == "" {
 		return nil
 	}
-	conn, err := net.Dial("unixgram", address)
+	conn, err := net.Dial("unixgram", address) //nolint:gosec // NOTIFY_SOCKET is set by the init system that started parvus
 	if err != nil {
 		return fmt.Errorf("NOTIFY_SOCKET: %w", err)
 	}
