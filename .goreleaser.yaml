@@ -88,22 +88,6 @@ homebrew_casks:
 checksum:
   name_template: checksums.txt
 
-changelog:
-  use: git
-  sort: asc
-  abbrev: -1
-  filters:
-    include:
-      - "^feat"
-      - "^fix"
-  groups:
-    - title: Features
-      regexp: "^feat"
-      order: 0
-    - title: Fixes
-      regexp: "^fix"
-      order: 1
-
 dockers_v2:
   - images:
       - ghcr.io/recregt/parvus
@@ -124,39 +108,3 @@ release:
   github:
     owner: recregt
     name: parvus
-  footer: |
-    ## Install
-
-    Debian and Ubuntu:
-
-    ```sh
-    curl -LO https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.deb
-    sudo apt install ./parvus_linux_amd64.deb
-    ```
-
-    Fedora, RHEL and openSUSE:
-
-    ```sh
-    sudo dnf install https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.rpm
-    ```
-
-    Alpine:
-
-    ```sh
-    curl -LO https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.apk
-    sudo apk add --allow-untrusted ./parvus_linux_amd64.apk
-    ```
-
-    macOS:
-
-    ```sh
-    brew install recregt/tap/parvus
-    ```
-
-    Container:
-
-    ```sh
-    docker pull ghcr.io/recregt/parvus:{{ .Version }}
-    ```
-
-    Every file here has a build provenance attestation. Check one with `gh attestation verify <file> --repo recregt/parvus`. The packages for arm64 sit next to the amd64 ones. After installing a package, set your domain in `/etc/parvus/parvus.env` and run `sudo systemctl enable --now parvus`, or `rc-update add parvus && rc-service parvus start` on Alpine. The [guide](https://parvus.recregt.com/guide/going-to-production/) has the rest.

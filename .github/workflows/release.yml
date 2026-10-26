@@ -44,7 +44,7 @@ jobs:
           HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         run: >-
           nix shell --inputs-from . nixpkgs#goreleaser nixpkgs#go --command
-          goreleaser release --clean
+          goreleaser release --clean --release-notes "release-notes/${GITHUB_REF_NAME}.md"
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
