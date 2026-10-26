@@ -140,10 +140,24 @@
           cd ${./.}
           addlicense -check \
             -ignore 'LICENSE' -ignore '**/*.mod' -ignore '**/*.sum' -ignore 'flake.lock' \
+            -ignore '**/uv.lock' -ignore '**/.python-version' -ignore '**/.venv/**' \
             -ignore 'docs/assets/vendor/**' \
             -ignore '.git/**' .
           touch $out
         '';
+
+        packages-lint =
+          pkgs.runCommand "parvus-packages-lint"
+            {
+              nativeBuildInputs = [ pkgs.ruff ];
+              RUFF_NO_CACHE = "true";
+            }
+            ''
+              cd ${./e2e/packages}
+              ruff check .
+              ruff format --check .
+              touch $out
+            '';
       }
       // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
         browser =
@@ -160,7 +174,7 @@
             }
             ''
               export HOME=$TMPDIR
-              bash ${sourceOf pkgs}/e2e/run.sh
+              bash ${sourceOf pkgs}/e2e/browser/run.sh
               touch $out
             '';
       });
@@ -176,6 +190,9 @@
             pkgs.hugo
           ];
           HUGO_THEMESDIR = docsThemes pkgs;
+          PYTHONDONTWRITEBYTECODE = "1";
+          RUFF_NO_CACHE = "true";
+          PYTEST_ADDOPTS = "-p no:cacheprovider";
         };
       });
     };

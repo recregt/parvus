@@ -1,0 +1,152 @@
+{
+  "test_install.py::test_a_fresh_install_creates_the_user_and_both_secrets[alpine]": {
+    "peak_bytes": 77885440,
+    "cpu_cores": 0.069,
+    "seconds": 6.4,
+    "inotify_instances": 2
+  },
+  "test_install.py::test_a_fresh_install_creates_the_user_and_both_secrets[debian]": {
+    "peak_bytes": 124162048,
+    "cpu_cores": 0.162,
+    "seconds": 3.8,
+    "inotify_instances": 7
+  },
+  "test_install.py::test_a_fresh_install_creates_the_user_and_both_secrets[fedora]": {
+    "peak_bytes": 467574784,
+    "cpu_cores": 0.08,
+    "seconds": 93.2,
+    "inotify_instances": 8
+  },
+  "test_install.py::test_the_backend_can_read_the_secret_but_never_the_pepper[alpine]": {
+    "peak_bytes": 68780032,
+    "cpu_cores": 0.045,
+    "seconds": 10.6,
+    "inotify_instances": 2
+  },
+  "test_install.py::test_the_backend_can_read_the_secret_but_never_the_pepper[debian]": {
+    "peak_bytes": 58707968,
+    "cpu_cores": 0.166,
+    "seconds": 3.5,
+    "inotify_instances": 7
+  },
+  "test_install.py::test_the_backend_can_read_the_secret_but_never_the_pepper[fedora]": {
+    "peak_bytes": 421011456,
+    "cpu_cores": 0.078,
+    "seconds": 93.2,
+    "inotify_instances": 8
+  },
+  "test_install.py::test_the_backend_reaches_parvus_as_soon_as_the_start_returns[debian]": {
+    "peak_bytes": 57798656,
+    "cpu_cores": 0.136,
+    "seconds": 5.0,
+    "inotify_instances": 7
+  },
+  "test_install.py::test_the_backend_reaches_parvus_as_soon_as_the_start_returns[fedora]": {
+    "peak_bytes": 486191104,
+    "cpu_cores": 0.083,
+    "seconds": 89.5,
+    "inotify_instances": 8
+  },
+  "test_install.py::test_the_service_refuses_to_start_until_it_is_configured[alpine]": {
+    "peak_bytes": 68521984,
+    "cpu_cores": 0.041,
+    "seconds": 14.3,
+    "inotify_instances": 2
+  },
+  "test_install.py::test_the_service_refuses_to_start_until_it_is_configured[debian]": {
+    "peak_bytes": 60592128,
+    "cpu_cores": 0.185,
+    "seconds": 3.6,
+    "inotify_instances": 7
+  },
+  "test_install.py::test_the_service_refuses_to_start_until_it_is_configured[fedora]": {
+    "peak_bytes": 582279168,
+    "cpu_cores": 0.092,
+    "seconds": 79.0,
+    "inotify_instances": 8
+  },
+  "test_remove.py::test_removing_the_package_stops_the_service_and_keeps_both_secrets[alpine]": {
+    "peak_bytes": 72187904,
+    "cpu_cores": 0.085,
+    "seconds": 9.6,
+    "inotify_instances": 2
+  },
+  "test_remove.py::test_removing_the_package_stops_the_service_and_keeps_both_secrets[debian]": {
+    "peak_bytes": 63295488,
+    "cpu_cores": 0.136,
+    "seconds": 6.1,
+    "inotify_instances": 7
+  },
+  "test_remove.py::test_removing_the_package_stops_the_service_and_keeps_both_secrets[fedora]": {
+    "peak_bytes": 466055168,
+    "cpu_cores": 0.086,
+    "seconds": 86.7,
+    "inotify_instances": 8
+  },
+  "test_remove.py::test_the_package_installs_on_a_machine_without_an_init_system[alpine]": {
+    "peak_bytes": 67682304,
+    "cpu_cores": 0.042,
+    "seconds": 10.0,
+    "inotify_instances": 2
+  },
+  "test_remove.py::test_the_package_installs_on_a_machine_without_an_init_system[debian]": {
+    "peak_bytes": 30642176,
+    "cpu_cores": 0.063,
+    "seconds": 3.6,
+    "inotify_instances": 2
+  },
+  "test_remove.py::test_the_package_installs_on_a_machine_without_an_init_system[fedora]": {
+    "peak_bytes": 443293696,
+    "cpu_cores": 0.085,
+    "seconds": 68.6,
+    "inotify_instances": 2
+  },
+  "test_upgrade.py::test_an_upgrade_keeps_the_settings_and_both_secrets[alpine]": {
+    "peak_bytes": 81043456,
+    "cpu_cores": 0.062,
+    "seconds": 12.9,
+    "inotify_instances": 2
+  },
+  "test_upgrade.py::test_an_upgrade_keeps_the_settings_and_both_secrets[debian]": {
+    "peak_bytes": 65327104,
+    "cpu_cores": 0.156,
+    "seconds": 6.1,
+    "inotify_instances": 7
+  },
+  "test_upgrade.py::test_an_upgrade_keeps_the_settings_and_both_secrets[fedora]": {
+    "peak_bytes": 471658496,
+    "cpu_cores": 0.11,
+    "seconds": 68.6,
+    "inotify_instances": 8
+  },
+  "test_upgrade.py::test_an_upgrade_leaves_the_pepper_out_of_the_backends_reach[alpine]": {
+    "peak_bytes": 81747968,
+    "cpu_cores": 0.063,
+    "seconds": 12.4,
+    "inotify_instances": 2
+  },
+  "test_upgrade.py::test_an_upgrade_leaves_the_pepper_out_of_the_backends_reach[debian]": {
+    "peak_bytes": 67235840,
+    "cpu_cores": 0.204,
+    "seconds": 4.3,
+    "inotify_instances": 7
+  },
+  "test_upgrade.py::test_an_upgrade_leaves_the_pepper_out_of_the_backends_reach[fedora]": {
+    "peak_bytes": 472809472,
+    "cpu_cores": 0.185,
+    "seconds": 40.3,
+    "inotify_instances": 8
+  },
+  "test_upgrade.py::test_an_upgrade_restarts_a_running_service_on_the_new_binary[debian]": {
+    "peak_bytes": 79847424,
+    "cpu_cores": 0.185,
+    "seconds": 5.5,
+    "inotify_instances": 7
+  },
+  "test_upgrade.py::test_an_upgrade_restarts_a_running_service_on_the_new_binary[fedora]": {
+    "peak_bytes": 444702720,
+    "cpu_cores": 0.124,
+    "seconds": 62.6,
+    "inotify_instances": 8
+  }
+}

@@ -1,0 +1,28 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+[project]
+name = "parvus-packages"
+version = "0.0.0"
+requires-python = ">=3.14"
+dependencies = ["periplu>=0.1.2"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = ["-p", "no:cacheprovider", "-rfE"]
+periplu_project = "parvus-packages"
+periplu_baseline = "resources.json"
+periplu_failures = "failures"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "PT", "SIM", "RUF", "PL", "PERF"]
+
+[tool.ruff.lint.per-file-ignores]
+"machine.py" = ["E501"]

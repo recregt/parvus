@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/.." && pwd)
+root=$(cd "$(dirname "$0")/../.." && pwd)
 work=$(mktemp -d)
 pids=()
 trap 'kill "${pids[@]}" 2>/dev/null || true; rm -rf "$work"' EXIT
@@ -42,7 +42,7 @@ check_relay() {
   wait_for "$APP_URL/"
 
   echo "# $name relay"
-  node "$root/e2e/browser.mjs"
+  node "$root/e2e/browser/browser.mjs"
 
   kill "${pids[@]}"
   wait "${pids[@]}" 2>/dev/null || true
