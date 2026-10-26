@@ -28,11 +28,10 @@ The examples use the username as the user id to stay short. A real host keeps it
 
 ## Run it
 
-You need a recent browser, plus Node 22 or newer for the Node relay or Go for the Go relay. From the repository root, download Parvus and start it. The archive below is for Linux on amd64; the [release page](https://github.com/recregt/parvus/releases/tag/v0.1.0) has the others.
+You need a recent browser, plus Node 22 or newer for the Node relay or Go for the Go relay. From the repository root, download Parvus and start it. For macOS or arm64, replace `linux_amd64` with `darwin_arm64`, `darwin_amd64` or `linux_arm64`.
 
 ```sh
-curl -LO https://github.com/recregt/parvus/releases/download/v0.1.0/parvus_0.1.0_linux_amd64.tar.gz
-tar -xzf parvus_0.1.0_linux_amd64.tar.gz parvus
+curl -L https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.tar.gz | tar -xz parvus
 
 PARVUS_SECRET=host-secret PARVUS_PEPPER=change-me \
 PARVUS_RP_ID=localhost PARVUS_RP_NAME=Example \

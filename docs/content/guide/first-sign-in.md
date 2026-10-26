@@ -12,11 +12,10 @@ cd parvus
 
 ## Start Parvus
 
-Download Parvus into the clone and start it. The archive below is for Linux on amd64. Every other build, for macOS and for arm64, sits next to it on the [release page](https://github.com/recregt/parvus/releases/tag/v0.1.0).
+Download Parvus into the clone and start it. The command below fetches the build for Linux on amd64. For macOS or arm64, replace `linux_amd64` with `darwin_arm64`, `darwin_amd64` or `linux_arm64`.
 
 ```sh
-curl -LO https://github.com/recregt/parvus/releases/download/v0.1.0/parvus_0.1.0_linux_amd64.tar.gz
-tar -xzf parvus_0.1.0_linux_amd64.tar.gz parvus
+curl -L https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.tar.gz | tar -xz parvus
 
 PARVUS_SECRET=host-secret PARVUS_PEPPER=change-me \
 PARVUS_RP_ID=localhost PARVUS_RP_NAME=Example \

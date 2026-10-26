@@ -23,9 +23,33 @@ openssl rand -base64 32
 
 Environment variables leak more easily than they seem: into process listings, crash reports and container inspectors. Every Parvus setting can instead be read from a file. Set `PARVUS_PEPPER_FILE=/path/to/file` in place of `PARVUS_PEPPER`, and Parvus reads the file, ignoring a trailing newline. Setting both forms of the same variable is an error, so there is never a question of which one won.
 
-## A service that restarts cleanly
+## The short way: a package
 
-On a systemd machine, credentials are the cleanest home for those files. Give Parvus a system user of its own first.
+On Debian, Ubuntu, Fedora, RHEL, openSUSE and Alpine, a package does all of the setup in this chapter for you.
+
+```sh
+curl -LO https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.deb
+sudo apt install ./parvus_linux_amd64.deb
+```
+
+On Fedora and its relatives it is one line, `sudo dnf install https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.rpm`. On Alpine, download `parvus_linux_amd64.apk` and run `sudo apk add --allow-untrusted ./parvus_linux_amd64.apk`. Every package also exists for arm64.
+
+The package creates a `parvus` system user, generates the secret and the pepper in `/etc/parvus/`, and installs a service. It cannot know your domain, so the service waits for you. Open `/etc/parvus/parvus.env`, fill in the four empty settings, and start it.
+
+```sh
+sudoedit /etc/parvus/parvus.env
+sudo systemctl enable --now parvus
+```
+
+On Alpine, start it with `sudo rc-update add parvus && sudo rc-service parvus start`. Until the settings are filled in, the service refuses to start and says which setting is missing.
+
+Parvus then listens on the unix socket `/run/parvus/parvus.sock`. Your backend reaches it by joining the `parvus` group, which also lets it read the shared secret from `/etc/parvus/secret`. The pepper stays readable by root alone.
+
+Upgrading is installing the newer package the same way. Your settings, the secret and the pepper stay as they are, and a running service restarts on the new version. Removing the package stops the service and leaves `/etc/parvus` behind, so nothing that protects your users' recovery codes disappears by accident.
+
+## A service by hand
+
+On a system without a package, the same setup takes a few steps. On a systemd machine, credentials are the cleanest home for the secret files. Give Parvus a system user of its own first.
 
 ```sh
 sudo useradd --system --no-create-home parvus

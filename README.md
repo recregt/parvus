@@ -14,32 +14,56 @@ Parvus sits behind your backend on a private socket. Your backend relays a few s
 
 ## Install
 
-Download a release for Linux or macOS, on amd64 or arm64, and check it against the published checksums.
+On Debian and Ubuntu, the package installs Parvus as a systemd service with its own user and freshly generated secrets.
 
 ```sh
-curl -LO https://github.com/recregt/parvus/releases/download/v0.1.0/parvus_0.1.0_linux_amd64.tar.gz
-curl -LO https://github.com/recregt/parvus/releases/download/v0.1.0/checksums.txt
-sha256sum --check --ignore-missing checksums.txt
-tar -xzf parvus_0.1.0_linux_amd64.tar.gz parvus
-./parvus --version
+curl -LO https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.deb
+sudo apt install ./parvus_linux_amd64.deb
 ```
 
-Every release file and image is signed with build provenance. With the GitHub CLI you can confirm that a file was built by this repository's release workflow.
+On Fedora, RHEL and openSUSE:
 
 ```sh
-gh attestation verify parvus_0.1.0_linux_amd64.tar.gz --repo recregt/parvus
+sudo dnf install https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.rpm
 ```
 
-Or run the container image, which holds nothing but the binary.
+On Alpine, with OpenRC:
 
 ```sh
-docker run --rm ghcr.io/recregt/parvus:0.1.0 --version
+curl -LO https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.apk
+sudo apk add --allow-untrusted ./parvus_linux_amd64.apk
 ```
 
-Or build it with Go.
+Then set your domain in `/etc/parvus/parvus.env` and start the service with `sudo systemctl enable --now parvus`, or `sudo rc-update add parvus && sudo rc-service parvus start` on Alpine. Every package also comes for arm64: replace `amd64` with `arm64`.
+
+On macOS or Linux with Homebrew:
 
 ```sh
-go install github.com/recregt/parvus/cmd/parvus@v0.1.0
+brew install recregt/tap/parvus
+```
+
+As a container:
+
+```sh
+docker run --rm ghcr.io/recregt/parvus --version
+```
+
+As a plain binary, for Linux or macOS on amd64 or arm64:
+
+```sh
+curl -L https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.tar.gz | tar -xz parvus
+```
+
+With Go:
+
+```sh
+go install github.com/recregt/parvus/cmd/parvus@latest
+```
+
+Every release file and image is signed with build provenance, so you can confirm that a download was built by this repository's release workflow.
+
+```sh
+gh attestation verify parvus_linux_amd64.deb --repo recregt/parvus
 ```
 
 The [guide](https://parvus.recregt.com/guide/) takes it from here.
