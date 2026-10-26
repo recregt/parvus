@@ -96,6 +96,7 @@ func Seeds() [][]byte {
 		Seed("CreateUser 0 0 0", "CreateSession 0 0 2", "ExtendSession 0 3", "Tick 0", "Session 0", "DeleteSessions 0"),
 		Seed("PutChallenge 0 0 2", "Tick 0", "TakeChallenge 0", "PutChallenge 1 0 3", "PutChallenge 1 1 3", "TakeChallenge 1"),
 		Seed("CreateUser 0 0 0", "CreateUser 1 0 0", "DeleteUser 0", "CreateUser 1 0 0", "UpdateCredential 0 3"),
+		Seed("CreateUser 0 0 0", "CreateSession 0 0 0", "CreateSession 0 0 0"),
 	}
 }
 
