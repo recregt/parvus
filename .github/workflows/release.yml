@@ -41,6 +41,7 @@ jobs:
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: >-
           nix shell --inputs-from . nixpkgs#goreleaser nixpkgs#go --command
           goreleaser release --clean

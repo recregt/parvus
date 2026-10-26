@@ -20,10 +20,68 @@ builds:
 
 archives:
   - formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
+
+nfpms:
+  - id: packages
+    package_name: parvus
+    file_name_template: "{{ .PackageName }}_{{ .Os }}_{{ .Arch }}"
+    vendor: recregt
+    homepage: https://parvus.recregt.com
+    maintainer: recregt <203110092+recregt@users.noreply.github.com>
+    description: Passkey sign-in for any backend, in one small binary.
+    license: MPL-2.0
+    section: net
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+    contents:
+      - src: packaging/parvus.service
+        dst: /usr/lib/systemd/system/parvus.service
+        packager: deb
+      - src: packaging/parvus.service
+        dst: /usr/lib/systemd/system/parvus.service
+        packager: rpm
+      - dst: /etc/parvus
+        type: dir
+        file_info:
+          mode: 0750
+          owner: root
+          group: parvus
+      - src: packaging/parvus.openrc
+        dst: /etc/init.d/parvus
+        packager: apk
+        file_info:
+          mode: 0755
+      - src: packaging/parvus.env
+        dst: /etc/parvus/parvus.env
+        type: config|noreplace
+        file_info:
+          mode: 0644
+    scripts:
+      preinstall: packaging/preinstall.sh
+      postinstall: packaging/postinstall.sh
+      preremove: packaging/preremove.sh
+
+homebrew_casks:
+  - name: parvus
+    repository:
+      owner: recregt
+      name: homebrew-tap
+      token: '{{ index .Env "HOMEBREW_TAP_TOKEN" }}'
+    skip_upload: '{{ if eq (index .Env "HOMEBREW_TAP_TOKEN") "" }}true{{ end }}'
+    directory: Casks
+    homepage: https://parvus.recregt.com
+    description: Passkey sign-in for any backend, in one small binary
+    license: MPL-2.0
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/parvus"]
+          end
 
 checksum:
   name_template: checksums.txt
@@ -64,3 +122,39 @@ release:
   github:
     owner: recregt
     name: parvus
+  footer: |
+    ## Install
+
+    Debian and Ubuntu:
+
+    ```sh
+    curl -LO https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.deb
+    sudo apt install ./parvus_linux_amd64.deb
+    ```
+
+    Fedora, RHEL and openSUSE:
+
+    ```sh
+    sudo dnf install https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.rpm
+    ```
+
+    Alpine:
+
+    ```sh
+    curl -LO https://github.com/recregt/parvus/releases/download/{{ .Tag }}/parvus_linux_amd64.apk
+    sudo apk add --allow-untrusted ./parvus_linux_amd64.apk
+    ```
+
+    macOS:
+
+    ```sh
+    brew install recregt/tap/parvus
+    ```
+
+    Container:
+
+    ```sh
+    docker pull ghcr.io/recregt/parvus:{{ .Version }}
+    ```
+
+    Every file here has a build provenance attestation. Check one with `gh attestation verify <file> --repo recregt/parvus`. The packages for arm64 sit next to the amd64 ones. After installing a package, set your domain in `/etc/parvus/parvus.env` and run `sudo systemctl enable --now parvus`, or `rc-update add parvus && rc-service parvus start` on Alpine. The [guide](https://parvus.recregt.com/guide/going-to-production/) has the rest.

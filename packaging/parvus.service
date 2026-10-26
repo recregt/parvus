@@ -1,0 +1,25 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+[Unit]
+Description=Parvus passkey engine
+Documentation=https://parvus.recregt.com
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/parvus
+User=parvus
+Group=parvus
+EnvironmentFile=/etc/parvus/parvus.env
+StateDirectory=parvus
+RuntimeDirectory=parvus
+RuntimeDirectoryMode=0750
+LoadCredential=secret:/etc/parvus/secret
+LoadCredential=pepper:/etc/parvus/pepper
+Environment=PARVUS_SECRET_FILE=%d/secret
+Environment=PARVUS_PEPPER_FILE=%d/pepper
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,32 @@
+#!/sbin/openrc-run
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+name="parvus"
+description="Parvus passkey engine"
+command="/usr/bin/parvus"
+command_user="parvus:parvus"
+supervisor="supervise-daemon"
+output_logger="logger -t parvus"
+error_logger="logger -t parvus -p daemon.err"
+
+depend() {
+	use net
+}
+
+start_pre() {
+	set -a
+	. /etc/parvus/parvus.env
+	set +a
+	for setting in PARVUS_RP_ID PARVUS_RP_NAME PARVUS_ORIGINS PARVUS_MAX_CREDENTIALS PARVUS_DB PARVUS_LISTEN; do
+		eval "value=\${$setting:-}"
+		if [ -z "$value" ]; then
+			eerror "$setting is empty in /etc/parvus/parvus.env"
+			return 1
+		fi
+	done
+	export PARVUS_SECRET_FILE=/etc/parvus/secret
+	export PARVUS_PEPPER_FILE=/etc/parvus/pepper
+	checkpath --directory --mode 0750 --owner parvus:parvus /var/lib/parvus /run/parvus
+}
