@@ -182,6 +182,98 @@
         }
       );
 
+      apps = forEach (pkgs: {
+        fuzz =
+          let
+            skipModerncCoverage = pkgs.writeShellApplication {
+              name = "parvus-fuzz-skip-modernc-coverage";
+              text = ''
+                tool=$1
+                shift
+                if [[ ''${1-} == -V=full ]]; then
+                  echo "$("$tool" "$@") skip-modernc-coverage"
+                  exit
+                fi
+                if [[ ''${tool##*/} == compile && " $* " == *" -p modernc.org/"* ]]; then
+                  args=()
+                  for arg in "$@"; do
+                    [[ $arg == -d=libfuzzer ]] || args+=("$arg")
+                  done
+                  set -- "''${args[@]}"
+                fi
+                exec "$tool" "$@"
+              '';
+            };
+          in
+          {
+            type = "app";
+            meta.description = "Fuzz a store against the model until interrupted";
+            program = pkgs.lib.getExe (
+              pkgs.writeShellApplication {
+                name = "parvus-fuzz";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.git
+                  pkgs.postgresql
+                ];
+                text = ''
+                  cd "$(git rev-parse --show-toplevel)"
+                  store=''${1:-sqlite}
+                  shift || true
+                  if [[ $store != sqlite && $store != postgres ]]; then
+                    echo "usage: nix run .#fuzz -- [sqlite|postgres] [go test flags]" >&2
+                    exit 2
+                  fi
+                  package=internal/store/$store
+                  report=fuzz-failures/$store
+                  rm -rf "$report"
+
+                  if [[ -d /dev/shm ]]; then
+                    scratch=$(mktemp -d -p /dev/shm)
+                  else
+                    scratch=$(mktemp -d)
+                  fi
+                  trap 'rm -rf "$scratch"' EXIT
+                  export TMPDIR=$scratch
+
+                  tags=()
+                  if [[ $store == postgres ]]; then
+                    server=$scratch/postgres
+                    trap 'pg_ctl --pgdata="$server/data" --wait stop >/dev/null; rm -rf "$scratch"' EXIT
+                    initdb --pgdata="$server/data" --auth=trust --username=parvus >/dev/null
+                    pg_ctl --pgdata="$server/data" --wait --log="$server/postgres.log" \
+                      --options="-c listen_addresses= -c unix_socket_directories=$server -c log_min_messages=log -c log_checkpoints=off" \
+                      start >/dev/null
+                    export PARVUS_TEST_POSTGRES="host=$server user=parvus"
+                    tags=(-tags postgres)
+                  fi
+
+                  trap 'interrupted=1' INT
+                  if go test -toolexec ${pkgs.lib.getExe skipModerncCoverage} "''${tags[@]}" \
+                    -run '^$' -fuzz '^FuzzAgreesWithTheModel$' "$@" "./$package" 2>&1 | tee -i "$scratch/fuzz.log"; then
+                    exit
+                  fi
+                  if [[ -v interrupted ]]; then
+                    exit 130
+                  fi
+
+                  mkdir -p "$report"
+                  cp "$scratch/fuzz.log" "$report"
+                  if [[ $store == postgres ]]; then
+                    cp "$server/postgres.log" "$report"
+                  fi
+                  sed -n 's/^ *Failing input written to //p' "$scratch/fuzz.log" | while read -r input; do
+                    mkdir -p "$report/$(dirname "$input")"
+                    cp "$package/$input" "$report/$input"
+                  done
+                  echo "failure report: $report" >&2
+                  exit 1
+                '';
+              }
+            );
+          };
+      });
+
       devShells = forEach (pkgs: {
         default = pkgs.mkShell {
           packages = [
