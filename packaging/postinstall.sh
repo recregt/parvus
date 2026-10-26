@@ -7,25 +7,26 @@ set -e
 
 write_secret() {
 	path=$1
-	group=$2
+	owner=$2
 	mode=$3
-	if [ -e "$path" ]; then
-		return
+	if [ ! -e "$path" ]; then
+		(umask 077 && head -c 32 /dev/urandom | base64 > "$path")
 	fi
-	(umask 077 && head -c 32 /dev/urandom | base64 > "$path")
-	chgrp "$group" "$path"
+	chown "$owner" "$path"
 	chmod "$mode" "$path"
 }
 
-write_secret /etc/parvus/secret parvus 0640
+write_secret /etc/parvus/secret root:parvus 0640
 
 if command -v systemd-sysusers >/dev/null 2>&1; then
-	write_secret /etc/parvus/pepper root 0600
+	write_secret /etc/parvus/pepper root:root 0600
 else
-	write_secret /etc/parvus/pepper parvus 0640
+	write_secret /etc/parvus/pepper parvus:parvus 0400
 fi
 
 if [ -d /run/systemd/system ]; then
 	systemctl daemon-reload
 	systemctl try-restart parvus.service
+elif command -v rc-service >/dev/null 2>&1; then
+	rc-service --ifstarted parvus restart
 fi
