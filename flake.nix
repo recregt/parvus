@@ -301,6 +301,7 @@
             pkgs.addlicense
             pkgs.lefthook
             pkgs.hugo
+            pkgs.uv
           ];
           HUGO_THEMESDIR = docsThemes pkgs;
           PYTHONDONTWRITEBYTECODE = "1";
