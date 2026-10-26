@@ -207,7 +207,7 @@
           in
           {
             type = "app";
-            meta.description = "Fuzz a store against the model until interrupted";
+            meta.description = "Fuzz one target until interrupted";
             program = pkgs.lib.getExe (
               pkgs.writeShellApplication {
                 name = "parvus-fuzz";
@@ -218,14 +218,27 @@
                 ];
                 text = ''
                   cd "$(git rev-parse --show-toplevel)"
-                  store=''${1:-sqlite}
+                  target=''${1:-sqlite}
                   shift || true
-                  if [[ $store != sqlite && $store != postgres ]]; then
-                    echo "usage: nix run .#fuzz -- [sqlite|postgres] [go test flags]" >&2
-                    exit 2
-                  fi
-                  package=internal/store/$store
-                  report=fuzz-failures/$store
+                  case $target in
+                    sqlite | postgres)
+                      package=internal/store/$target
+                      fuzz=FuzzAgreesWithTheModel
+                      ;;
+                    api)
+                      package=internal/api
+                      fuzz=FuzzNoRequestFailsInternallyOrSignsIn
+                      ;;
+                    engine)
+                      package=internal/engine
+                      fuzz=FuzzForgedResponsesNeverFinishACeremony
+                      ;;
+                    *)
+                      echo "usage: nix run .#fuzz -- [sqlite|postgres|api|engine] [go test flags]" >&2
+                      exit 2
+                      ;;
+                  esac
+                  report=fuzz-failures/$target
                   rm -rf "$report"
 
                   if [[ -d /dev/shm ]]; then
@@ -237,7 +250,7 @@
                   export TMPDIR=$scratch
 
                   tags=()
-                  if [[ $store == postgres ]]; then
+                  if [[ $target == postgres ]]; then
                     server=$scratch/postgres
                     trap 'pg_ctl --pgdata="$server/data" --wait stop >/dev/null; rm -rf "$scratch"' EXIT
                     initdb --pgdata="$server/data" --auth=trust --username=parvus >/dev/null
@@ -250,7 +263,7 @@
 
                   trap 'interrupted=1' INT
                   go test -toolexec ${pkgs.lib.getExe skipModerncCoverage} "''${tags[@]}" \
-                    -run '^$' -fuzz '^FuzzAgreesWithTheModel$' "$@" "./$package" 2>&1 |
+                    -run '^$' -fuzz "^$fuzz\$" "$@" "./$package" 2>&1 |
                     tee -i "$scratch/fuzz.log" || failed=("''${PIPESTATUS[@]}")
                   if [[ ! -v failed ]]; then
                     exit
@@ -264,7 +277,7 @@
 
                   mkdir -p "$report"
                   cp "$scratch/fuzz.log" "$report"
-                  if [[ $store == postgres ]]; then
+                  if [[ $target == postgres ]]; then
                     cp "$server/postgres.log" "$report"
                   fi
                   sed -n 's/^ *Failing input written to //p' "$scratch/fuzz.log" | while read -r input; do
