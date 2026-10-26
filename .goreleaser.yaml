@@ -70,8 +70,10 @@ homebrew_casks:
     repository:
       owner: recregt
       name: homebrew-tap
-      token: '{{ index .Env "HOMEBREW_TAP_TOKEN" }}'
-    skip_upload: '{{ if eq (index .Env "HOMEBREW_TAP_TOKEN") "" }}true{{ end }}'
+      git:
+        url: git@github.com:recregt/homebrew-tap.git
+        private_key: '{{ index .Env "HOMEBREW_TAP_DEPLOY_KEY" }}'
+    skip_upload: '{{ if eq (index .Env "HOMEBREW_TAP_DEPLOY_KEY") "" }}true{{ end }}'
     directory: Casks
     homepage: https://parvus.recregt.com
     description: Passkey sign-in for any backend, in one small binary
