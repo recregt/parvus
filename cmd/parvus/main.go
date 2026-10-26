@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 
@@ -38,7 +39,7 @@ func main() {
 	flag.Parse()
 	switch {
 	case *showVersion:
-		fmt.Println(version)
+		fmt.Println(currentVersion())
 	case flag.NArg() > 0:
 		slog.Error("parvus takes no arguments; configure it with PARVUS_* environment variables", "arguments", flag.Args())
 		os.Exit(1)
@@ -84,7 +85,7 @@ func run() error {
 	server := &http.Server{Handler: api.New(eng, cfg.Secret, log)}
 	served := make(chan error, 1)
 	go func() { served <- server.Serve(listener) }()
-	log.Info("listening", "address", listener.Addr().String(), "version", version)
+	log.Info("listening", "address", listener.Addr().String(), "version", currentVersion())
 
 	select {
 	case err := <-served:
@@ -98,6 +99,16 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+func currentVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return strings.TrimPrefix(info.Main.Version, "v")
+	}
+	return version
 }
 
 func restrictNewFiles() {
