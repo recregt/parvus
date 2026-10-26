@@ -71,6 +71,34 @@ SupplementaryGroups=parvus
 
 When systemd asks Parvus to stop, it finishes the requests it is already serving and exits. If Parvus is ever killed outright, it starts again without fuss.
 
+## In a container
+
+The image `ghcr.io/recregt/parvus` holds the binary and nothing else, and runs as an unprivileged user. Give it a network of its own that only your backend joins, a volume for its database, and the secrets as read-only files.
+
+```sh
+docker network create --internal parvus
+docker volume create parvus-data
+
+docker run -d --name parvus --network parvus \
+  -v parvus-data:/home/nonroot \
+  -v /etc/parvus:/run/secrets:ro \
+  -e PARVUS_SECRET_FILE=/run/secrets/secret \
+  -e PARVUS_PEPPER_FILE=/run/secrets/pepper \
+  -e PARVUS_RP_ID=notes.example.com \
+  -e PARVUS_RP_NAME=Notes \
+  -e PARVUS_ORIGINS=https://notes.example.com \
+  -e PARVUS_DB=/home/nonroot/parvus.db \
+  -e PARVUS_LISTEN=0.0.0.0:9000 \
+  -e PARVUS_MAX_CREDENTIALS=20 \
+  ghcr.io/recregt/parvus:0.1.0
+```
+
+Start your backend with `--network parvus` as well, and it reaches Parvus at `http://parvus:9000`. The network is internal, so Parvus itself has no way out, and it needs none unless its database lives elsewhere.
+
+The volume sits on `/home/nonroot`, the one directory the unprivileged user owns, so Parvus can write its database there. The secret files must be readable by that user, whose id inside the container is 65532.
+
+Do not publish Parvus's port with `-p`. Parvus puts no time limit on reading a request, so anything that can reach it can hold a connection open without ever presenting the secret. On a network that only your backend joins, that never matters.
+
 ## Where Parvus listens
 
 Parvus speaks plain HTTP and expects to be reachable only by your backend. `PARVUS_LISTEN` takes either a TCP address or a unix socket.

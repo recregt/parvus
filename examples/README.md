@@ -28,16 +28,17 @@ The examples use the username as the user id to stay short. A real host keeps it
 
 ## Run it
 
-You need Nix, Go, Node 22 or newer, and a recent browser. From the repository root:
+You need a recent browser, plus Node 22 or newer for the Node relay or Go for the Go relay. From the repository root, download Parvus and start it. The archive below is for Linux on amd64; the [release page](https://github.com/recregt/parvus/releases/tag/v0.1.0) has the others.
 
 ```sh
-nix build
+curl -LO https://github.com/recregt/parvus/releases/download/v0.1.0/parvus_0.1.0_linux_amd64.tar.gz
+tar -xzf parvus_0.1.0_linux_amd64.tar.gz parvus
 
 PARVUS_SECRET=host-secret PARVUS_PEPPER=change-me \
 PARVUS_RP_ID=localhost PARVUS_RP_NAME=Example \
 PARVUS_ORIGINS=http://localhost:8080 \
 PARVUS_DB=parvus.db PARVUS_LISTEN=127.0.0.1:9000 \
-PARVUS_MAX_CREDENTIALS=20 ./result/bin/parvus
+PARVUS_MAX_CREDENTIALS=20 ./parvus
 ```
 
 In a second terminal, start one of the relays.
