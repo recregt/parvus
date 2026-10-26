@@ -86,6 +86,9 @@ func run() error {
 	served := make(chan error, 1)
 	go func() { served <- server.Serve(listener) }()
 	log.Info("listening", "address", listener.Addr().String(), "version", currentVersion())
+	if err := notifyReady(); err != nil {
+		return err
+	}
 
 	select {
 	case err := <-served:
@@ -97,6 +100,22 @@ func run() error {
 	}
 	if err := <-served; !errors.Is(err, http.ErrServerClosed) {
 		return err
+	}
+	return nil
+}
+
+func notifyReady() error {
+	address := os.Getenv("NOTIFY_SOCKET")
+	if address == "" {
+		return nil
+	}
+	conn, err := net.Dial("unixgram", address)
+	if err != nil {
+		return fmt.Errorf("NOTIFY_SOCKET: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := conn.Write([]byte("READY=1")); err != nil {
+		return fmt.Errorf("NOTIFY_SOCKET: %w", err)
 	}
 	return nil
 }

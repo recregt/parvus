@@ -8,6 +8,7 @@ Documentation=https://parvus.recregt.com
 After=network.target
 
 [Service]
+Type=notify
 ExecStart=/usr/bin/parvus
 User=parvus
 Group=parvus

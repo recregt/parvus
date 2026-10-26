@@ -31,6 +31,12 @@ The package creates a `parvus` system user, generates the secret and the pepper 
 
 Parvus then listens on the unix socket `/run/parvus/parvus.sock`. Your backend reaches it by joining the `parvus` group, which also lets it read the shared secret from `/etc/parvus/secret`. The pepper stays out of your backend's reach.
 
+On Alpine, `rc-service parvus start` returns before Parvus is listening. OpenRC does have a readiness protocol, but it creates its socket as root and then runs the service as a user who can't connect to it. So Parvus can't use it, and you wait for the socket yourself:
+
+```sh
+until [ -S /run/parvus/parvus.sock ]; do sleep 1; done
+```
+
 Upgrading is installing the newer package the same way. Your settings, the secret and the pepper stay as they are, and a running service restarts on the new version. Removing the package stops the service and leaves `/etc/parvus` behind, so nothing that protects your users' recovery codes disappears by accident.
 
 ## A service by hand
@@ -49,6 +55,7 @@ Description=Parvus passkey engine
 After=network.target
 
 [Service]
+Type=notify
 ExecStart=/usr/local/bin/parvus
 User=parvus
 Group=parvus
@@ -79,7 +86,7 @@ SupplementaryGroups=parvus
 
 `PARVUS_RP_ID` is your site's domain, and `PARVUS_ORIGINS` lists every origin your users' browsers will show, separated by commas. Passkeys made for one domain never work on another, so choose the domain before anyone registers.
 
-When systemd asks Parvus to stop, it finishes the requests it is already serving and exits. If Parvus is ever killed outright, it starts again without fuss.
+With `Type=notify`, Parvus tells systemd when it is listening, so `systemctl start parvus` returns only once your backend can connect, and a backend unit with `After=parvus.service` starts after that moment. When systemd asks Parvus to stop, it finishes the requests it is already serving and exits. If Parvus is ever killed outright, it starts again without fuss.
 
 ## In a container
 
