@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "enabledManagers": ["custom.regex", "dockerfile", "github-actions", "gomod", "nix", "pep621"],
+  "dependencyDashboard": true,
+  "semanticCommitScope": "",
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "nix": {
+    "enabled": true,
+    "lockFileMaintenance": {
+      "enabled": true,
+      "schedule": ["* * 1,15 * *"]
+    }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^lefthook\\.yml$/"],
+      "matchStrings": ["git_url: https://github\\.com/recregt/commitlint\\n\\s+ref: (?<currentValue>\\S+)"],
+      "depNameTemplate": "recregt/commitlint",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true,
+      "commitMessageTopic": "{{depName}}",
+      "semanticCommitType": "ci"
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["golang"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "go non-major",
+      "minimumReleaseAge": "3 days",
+      "postUpdateOptions": ["gomodTidy"]
+    },
+    {
+      "matchManagers": ["pep621"],
+      "groupName": "package suite",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "matchFileNames": ["e2e/packages/images/**"],
+      "groupName": "package suite images"
+    }
+  ]
+}
