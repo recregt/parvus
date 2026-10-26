@@ -7,7 +7,11 @@ set -e
 
 if command -v systemd-sysusers >/dev/null 2>&1; then
 	echo 'u parvus - "Parvus passkey engine" /var/lib/parvus' | systemd-sysusers -
-elif ! id parvus >/dev/null 2>&1; then
+elif id parvus >/dev/null 2>&1; then
+	:
+elif command -v useradd >/dev/null 2>&1; then
+	useradd --system --user-group --no-create-home --home-dir /var/lib/parvus --shell /usr/sbin/nologin parvus
+else
 	addgroup -S parvus
 	adduser -S -D -H -h /var/lib/parvus -s /sbin/nologin -G parvus parvus
 fi
