@@ -25,25 +25,11 @@ Environment variables leak more easily than they seem: into process listings, cr
 
 ## The short way: a package
 
-On Debian, Ubuntu, Fedora, RHEL, openSUSE and Alpine, a package does all of the setup in this chapter for you.
+On Debian, Ubuntu, Fedora, RHEL and Alpine, a package does all of the setup in this chapter for you. The commands are on the [install]({{< relref "/install" >}}) page.
 
-```sh
-curl -LO https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.deb
-sudo apt install ./parvus_linux_amd64.deb
-```
+The package creates a `parvus` system user, generates the secret and the pepper in `/etc/parvus/`, and installs a service. It cannot know your domain, so the service waits until you fill in the four empty settings in `/etc/parvus/parvus.env`. Until then, it refuses to start and says which setting is missing.
 
-On Fedora and its relatives it is one line, `sudo dnf install https://github.com/recregt/parvus/releases/latest/download/parvus_linux_amd64.rpm`. On Alpine, download `parvus_linux_amd64.apk` and run `sudo apk add --allow-untrusted ./parvus_linux_amd64.apk`. Every package also exists for arm64.
-
-The package creates a `parvus` system user, generates the secret and the pepper in `/etc/parvus/`, and installs a service. It cannot know your domain, so the service waits for you. Open `/etc/parvus/parvus.env`, fill in the four empty settings, and start it.
-
-```sh
-sudoedit /etc/parvus/parvus.env
-sudo systemctl enable --now parvus
-```
-
-On Alpine, start it with `sudo rc-update add parvus && sudo rc-service parvus start`. Until the settings are filled in, the service refuses to start and says which setting is missing.
-
-Parvus then listens on the unix socket `/run/parvus/parvus.sock`. Your backend reaches it by joining the `parvus` group, which also lets it read the shared secret from `/etc/parvus/secret`. The pepper stays readable by root alone.
+Parvus then listens on the unix socket `/run/parvus/parvus.sock`. Your backend reaches it by joining the `parvus` group, which also lets it read the shared secret from `/etc/parvus/secret`. The pepper stays out of your backend's reach.
 
 Upgrading is installing the newer package the same way. Your settings, the secret and the pepper stay as they are, and a running service restarts on the new version. Removing the package stops the service and leaves `/etc/parvus` behind, so nothing that protects your users' recovery codes disappears by accident.
 
@@ -114,7 +100,7 @@ docker run -d --name parvus --network parvus \
   -e PARVUS_DB=/home/nonroot/parvus.db \
   -e PARVUS_LISTEN=0.0.0.0:9000 \
   -e PARVUS_MAX_CREDENTIALS=20 \
-  ghcr.io/recregt/parvus:0.1.0
+  ghcr.io/recregt/parvus
 ```
 
 Start your backend with `--network parvus` as well, and it reaches Parvus at `http://parvus:9000`. The network is internal, so Parvus itself has no way out, and it needs none unless its database lives elsewhere.
