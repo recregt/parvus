@@ -29,6 +29,7 @@ const (
 	startingUnix   = 1_800_000_000
 	pepperFixture  = "0123456789abcdef0123456789abcdef"
 	userAlice      = "alice"
+	userBob        = "bob"
 	slotOne        = "slot-1"
 	slotTwo        = "slot-2"
 	slotThree      = "slot-3"
@@ -53,13 +54,13 @@ func (c *clock) Advance(d time.Duration) {
 }
 
 type harness struct {
-	t      *testing.T
+	t      testing.TB
 	ctx    context.Context
 	engine *engine.Engine
 	clock  *clock
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t testing.TB) *harness {
 	t.Helper()
 	clk := &clock{now: time.Unix(startingUnix, 0)}
 	eng, err := engine.New(model.New(), engine.Config{
@@ -542,4 +543,91 @@ func TestInvalidInputsAreRejected(t *testing.T) {
 			t.Fatalf("%+v: err = %v", in, err)
 		}
 	}
+}
+
+type ceremony struct {
+	name   string
+	begin  func(h *harness) ([]byte, error)
+	answer func(h *harness, alice *softauth.Authenticator, options []byte) []byte
+	finish func(h *harness, body []byte) error
+}
+
+var ceremonies = []ceremony{
+	{
+		name: "registration",
+		begin: func(h *harness) ([]byte, error) {
+			return h.engine.BeginRegistration(h.ctx, engine.RegistrationInput{Slot: slotTwo, UserID: userBob, TTL: ceremonyTTL})
+		},
+		answer: newDevice,
+		finish: func(h *harness, body []byte) error {
+			_, err := h.engine.FinishRegistration(h.ctx, slotTwo, body)
+			return err
+		},
+	},
+	{
+		name: "login without username",
+		begin: func(h *harness) ([]byte, error) {
+			return h.engine.BeginLogin(h.ctx, slotTwo, "", ceremonyTTL)
+		},
+		answer: aliceSigns,
+		finish: finishLogin,
+	},
+	{
+		name: "login with username",
+		begin: func(h *harness) ([]byte, error) {
+			return h.engine.BeginLogin(h.ctx, slotTwo, userAlice, ceremonyTTL)
+		},
+		answer: aliceSigns,
+		finish: finishLogin,
+	},
+	{
+		name: "added passkey",
+		begin: func(h *harness) ([]byte, error) {
+			return h.engine.BeginAddCredential(h.ctx, userAlice, ceremonyTTL)
+		},
+		answer: newDevice,
+		finish: func(h *harness, body []byte) error {
+			return h.engine.FinishAddCredential(h.ctx, userAlice, body)
+		},
+	},
+}
+
+func newDevice(h *harness, _ *softauth.Authenticator, options []byte) []byte {
+	return softauth.New(h.t, rpID, origin).Register(options)
+}
+
+func aliceSigns(_ *harness, alice *softauth.Authenticator, options []byte) []byte {
+	return alice.Assert(options)
+}
+
+func finishLogin(h *harness, body []byte) error {
+	_, err := h.engine.FinishLogin(h.ctx, slotTwo, body, sessionTTL)
+	return err
+}
+
+func FuzzForgedResponsesNeverFinishACeremony(f *testing.F) {
+	for i, c := range ceremonies {
+		h := newHarness(f)
+		alice, _ := h.register(userAlice, slotOne)
+		options, err := c.begin(h)
+		if err != nil {
+			f.Fatal(err)
+		}
+		genuine := c.answer(h, alice, options)
+		if err := c.finish(h, genuine); err != nil {
+			f.Fatalf("%s refuses a genuine response: %v", c.name, err)
+		}
+		f.Add(uint8(i), genuine)
+	}
+	f.Fuzz(func(t *testing.T, which uint8, body []byte) {
+		h := newHarness(t)
+		h.register(userAlice, slotOne)
+		c := ceremonies[int(which)%len(ceremonies)]
+		if _, err := c.begin(h); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.finish(h, body); !errors.Is(err, engine.ErrAuth) {
+			t.Fatalf("%s: err = %v, want an authentication failure", c.name, err)
+		}
+	})
 }
