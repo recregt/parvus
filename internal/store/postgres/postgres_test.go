@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"os"
 	"strings"
 	"sync"
@@ -111,5 +112,45 @@ func TestEnginesStartingTogetherCreateTheSchemaOnce(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestAnExpiredChallengeTheSweepSkippedIsStillRefused(t *testing.T) {
+	ctx := context.Background()
+	url := freshDatabase(t)
+	db := open(t, url)
+	if err := db.PutChallenge(ctx, "x", []byte("data"), 10, 0); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := sql.Open("pgx", url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = raw.Close() }()
+	lock, err := raw.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lock.ExecContext(ctx, "SELECT 1 FROM challenges WHERE slot = 'x' FOR UPDATE"); err != nil {
+		t.Fatal(err)
+	}
+	taken := make(chan error, 1)
+	go func() {
+		_, err := db.TakeChallenge(ctx, "x", 10)
+		taken <- err
+	}()
+	for waiting := 0; waiting == 0; {
+		err := raw.QueryRowContext(ctx,
+			"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'").
+			Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := lock.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-taken; !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("expired challenge taken: %v", err)
 	}
 }
