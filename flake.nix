@@ -104,24 +104,20 @@
           tests = goCheck pkgs {
             doCheck = true;
             env.CGO_ENABLED = "1";
-            checkFlags = [
-              "-race"
-              "-count=1"
-            ];
-          };
-
-          postgres = goCheck pkgs {
-            doCheck = true;
-            env.CGO_ENABLED = "1";
             nativeCheckInputs = [ pkgs.postgresql ];
+            buildPhase = ''
+              runHook preBuild
+              runHook postBuild
+            '';
             checkPhase = ''
               runHook preCheck
+              export GOFLAGS=''${GOFLAGS//-trimpath/}
               export PGDATA=$TMPDIR/postgres
               initdb --auth=trust --username=parvus >/dev/null
               pg_ctl --wait --log=$TMPDIR/postgres.log \
                 --options="-c listen_addresses= -c unix_socket_directories=$TMPDIR" start
               PARVUS_TEST_POSTGRES="host=$TMPDIR user=parvus" \
-                go test -tags postgres -race -count=1 ./internal/store/postgres
+                go test -tags postgres -race -count=1 ./...
               pg_ctl --wait stop
               runHook postCheck
             '';
