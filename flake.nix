@@ -249,12 +249,17 @@
                   fi
 
                   trap 'interrupted=1' INT
-                  if go test -toolexec ${pkgs.lib.getExe skipModerncCoverage} "''${tags[@]}" \
-                    -run '^$' -fuzz '^FuzzAgreesWithTheModel$' "$@" "./$package" 2>&1 | tee -i "$scratch/fuzz.log"; then
+                  go test -toolexec ${pkgs.lib.getExe skipModerncCoverage} "''${tags[@]}" \
+                    -run '^$' -fuzz '^FuzzAgreesWithTheModel$' "$@" "./$package" 2>&1 |
+                    tee -i "$scratch/fuzz.log" || failed=("''${PIPESTATUS[@]}")
+                  if [[ ! -v failed ]]; then
                     exit
                   fi
                   if [[ -v interrupted ]]; then
                     exit 130
+                  fi
+                  if ((failed[1] != 0)); then
+                    exit "''${failed[1]}"
                   fi
 
                   mkdir -p "$report"
