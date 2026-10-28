@@ -140,6 +140,11 @@ func TestAnExpiredChallengeTheSweepSkippedIsStillRefused(t *testing.T) {
 		taken <- err
 	}()
 	for waiting := 0; waiting == 0; {
+		select {
+		case err := <-taken:
+			t.Fatalf("challenge taken while its row was locked: %v", err)
+		default:
+		}
 		err := raw.QueryRowContext(ctx,
 			"SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'").
 			Scan(&waiting)
