@@ -47,7 +47,7 @@ sudo rc-update add parvus && sudo rc-service parvus start
 ## Homebrew
 
 ```sh
-brew install recregt/tap/parvus
+brew install go-parvus/tap/parvus
 ```
 
 ## Container

@@ -71,10 +71,10 @@ nfpms:
 homebrew_casks:
   - name: parvus
     repository:
-      owner: recregt
+      owner: go-parvus
       name: homebrew-tap
       git:
-        url: git@github.com:recregt/homebrew-tap.git
+        url: git@github.com:go-parvus/homebrew-tap.git
         private_key: '{{ index .Env "HOMEBREW_TAP_DEPLOY_KEY" }}'
     skip_upload: '{{ if eq (index .Env "HOMEBREW_TAP_DEPLOY_KEY") "" }}true{{ end }}'
     directory: Casks
