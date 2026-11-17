@@ -2,7 +2,9 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:best-practices"],
   "enabledManagers": ["custom.regex", "dockerfile", "github-actions", "gomod", "nix", "pep621"],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "semanticCommitScope": "",
   "lockFileMaintenance": {
     "enabled": false
